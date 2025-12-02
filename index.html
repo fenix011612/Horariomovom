@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Grade de Horários Movom</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+    :root{
+        --lilas:#6a5acd;
+        --ciano:#4fc3f7;
+        --bg:#f7f5ff;
+        --card:#ffffff;
+    }
+    body {
+        font-family: "Poppins", Arial, sans-serif;
+        background: var(--bg);
+        padding: 20px;
+        color: #333;
+    }
+    h2, h3 {
+        text-align: center;
+        color: var(--lilas);
+        font-weight: 600;
+        margin: 8px 0;
+    }
+    .controls{
+        display:flex;
+        justify-content:center;
+        gap:12px;
+        align-items:center;
+        margin-bottom:16px;
+    }
+    select {
+        padding:8px 10px;
+        border-radius:8px;
+        border:1px solid #c9c9ff;
+        background:#fff;
+    }
+    .container-card{
+        background:var(--card);
+        border-radius:12px;
+        padding:14px;
+        box-shadow:0 6px 20px rgba(0,0,0,0.06);
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 24px;
+        background: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    thead th {
+        background: linear-gradient(90deg, var(--lilas), var(--ciano));
+        color: #fff;
+        padding: 10px;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+        text-align:center;
+    }
+    td {
+        border-bottom: 1px solid #eef6ff;
+        padding: 10px;
+        vertical-align: top;
+        text-align:left;
+        background: #fbfdff;
+    }
+    .horario-cell{ width:90px; text-align:center; font-weight:600; }
+    .instrutor-box{
+        border-left:4px solid var(--lilas);
+        padding:8px;
+        border-radius:6px;
+        background:#fff;
+    }
+    .instrutor-box + .instrutor-box{ border-left-color:var(--ciano); }
+    .alunos-box{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+    .aluno-row{ display:flex; gap:8px; align-items:center; }
+    .aluno-row input{ flex:1; padding:6px; border-radius:6px; border:1px solid #e7f3ff; }
+    .btn{
+        padding:6px 10px; border-radius:8px; border:none; cursor:pointer; font-weight:500;
+    }
+    .btn-add{ background:var(--ciano); color:#fff; }
+    .btn-remove{ background:#ff6b8a; color:#fff; }
+    .btn-apagar{ background:#ff6b8a; color:#fff; }
+    .small{ font-size:12px; padding:4px 8px; }
+</style>
+</head>
+
+<body>
+
+<div class="container-card">
+    <div class="controls">
+        <label for="diaSemana" style="font-weight:600; color:var(--lilas);">
+            Selecionar dia da semana:
+        </label>
+
+        <select id="diaSemana">
+            <option value="todos">Todos</option>
+            <option value="Segunda-feira">Segunda-feira</option>
+            <option value="Terça-feira">Terça-feira</option>
+            <option value="Quarta-feira">Quarta-feira</option>
+            <option value="Quinta-feira">Quinta-feira</option>
+            <option value="Sexta-feira">Sexta-feira</option>
+            <option value="Sábado">Sábado</option>
+        </select>
+
+        <div style="margin-left:12px; font-size:13px; color:#666;">
+            (limite: 5 alunos / instrutor · salva automaticamente)
+        </div>
+    </div>
+
+    <h2>Grade de Horários Movom</h2>
+    <div id="container"></div>
+</div>
+
+
+<script>
+// =====================================================
+// FUNÇÕES E CONFIGURAÇÕES
+// =====================================================
+
+function gerarHorarios(inicio, fim){
+    const lista = [];
+    for(let h=inicio; h<fim; h++){
+        lista.push(`${String(h).padStart(2,'0')}:00`);
+    }
+    return lista;
+}
+
+const semana = [
+    { dia: "Segunda-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Terça-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Quarta-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Quinta-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Sexta-feira", horarios: gerarHorarios(7,19) },
+    { dia: "Sábado", horarios: gerarHorarios(7,12) }
+];
+
+const MAX_ALUNOS = 5;
+const container = document.getElementById("container");
+const selectDia = document.getElementById("diaSemana");
+
+// SALVAR / CARREGAR
+function salvar(){
+    const data = [];
+
+    document.querySelectorAll("table[data-dia]").forEach(table => {
+        const dia = table.getAttribute("data-dia");
+        const linhas = [];
+
+        table.querySelectorAll("tbody tr").forEach(tr => {
+            if(tr.getAttribute("data-reuniao") === "1") return;
+
+            const horario = tr.querySelector(".horario-cell").textContent.trim();
+
+            const instr1 = tr.querySelector(".instrutor1 input")?.value || "";
+            const instr2 = tr.querySelector(".instrutor2 input")?.value || "";
+
+            const alunos1 = [...tr.querySelectorAll(".instrutor1 .aluno-row input")].map(i => i.value);
+            const alunos2 = [...tr.querySelectorAll(".instrutor2 .aluno-row input")].map(i => i.value);
+
+            linhas.push({ horario, instr1, instr2, alunos1, alunos2 });
+        });
+
+        data.push({ dia, linhas });
+    });
+
+    localStorage.setItem("gradeHorariosData", JSON.stringify(data));
+}
+
+function carregar(){
+    const raw = localStorage.getItem("gradeHorariosData");
+    return raw ? JSON.parse(raw) : null;
+}
+
+// ELEMENTO ALUNO
+function criarAlunoRow(nome){
+    const row = document.createElement("div");
+    row.className = "aluno-row";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Nome do aluno";
+    input.value = nome || "";
+    input.addEventListener("input", salvar);
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-remove small";
+    btn.textContent = "X";
+    btn.onclick = () => { row.remove(); salvar(); };
+
+    row.appendChild(input);
+    row.appendChild(btn);
+
+    return row;
+}
+
+// COLUNA INSTRUTOR
+function criarColunaInstrutor(valor){
+    const box = document.createElement("div");
+    box.className = "instrutor-box";
+
+    const inputInstr = document.createElement("input");
+    inputInstr.type = "text";
+    inputInstr.placeholder = "Nome do instrutor";
+    inputInstr.value = valor || "";
+    inputInstr.addEventListener("input", salvar);
+
+    const alunosBox = document.createElement("div");
+    alunosBox.className = "alunos-box";
+
+    box.appendChild(inputInstr);
+    box.appendChild(alunosBox);
+
+    return { box, alunosBox, inputInstr };
+}
+
+// LINHA DA TABELA
+function criarLinhaTabela(horario, saved){
+    const tr = document.createElement("tr");
+
+    const tdHorario = document.createElement("td");
+    tdHorario.className = "horario-cell";
+    tdHorario.textContent = horario;
+
+    // INSTRUTOR 1
+    const tdI1 = document.createElement("td");
+    tdI1.className = "instrutor1";
+
+    const i1 = criarColunaInstrutor(saved?.instr1);
+    tdI1.appendChild(i1.box);
+
+    (saved?.alunos1 || []).slice(0,MAX_ALUNOS)
+        .forEach(a => i1.alunosBox.appendChild(criarAlunoRow(a)));
+
+    const add1 = document.createElement("button");
+    add1.className = "btn btn-add small";
+    add1.textContent = "+ Aluno";
+    add1.onclick = () => {
+        if(i1.alunosBox.children.length >= MAX_ALUNOS){
+            alert("Limite de 5 alunos por instrutor.");
+            return;
+        }
+        i1.alunosBox.appendChild(criarAlunoRow(""));
+        salvar();
+    };
+    tdI1.appendChild(add1);
+
+    // INSTRUTOR 2
+    const tdI2 = document.createElement("td");
+    tdI2.className = "instrutor2";
+
+    const i2 = criarColunaInstrutor(saved?.instr2);
+    tdI2.appendChild(i2.box);
+
+    (saved?.alunos2 || []).slice(0,MAX_ALUNOS)
+        .forEach(a => i2.alunosBox.appendChild(criarAlunoRow(a)));
+
+    const add2 = document.createElement("button");
+    add2.className = "btn btn-add small";
+    add2.textContent = "+ Aluno";
+    add2.onclick = () => {
+        if(i2.alunosBox.children.length >= MAX_ALUNOS){
+            alert("Limite de 5 alunos por instrutor.");
+            return;
+        }
+        i2.alunosBox.appendChild(criarAlunoRow(""));
+        salvar();
+    };
+    tdI2.appendChild(add2);
+
+    // AÇÕES
+    const tdAcoes = document.createElement("td");
+    tdAcoes.style.textAlign = "center";
+
+    const apagar = document.createElement("button");
+    apagar.className = "btn btn-apagar small";
+    apagar.textContent = "Apagar horário";
+    apagar.onclick = () => { tr.remove(); salvar(); };
+
+    tdAcoes.appendChild(apagar);
+
+    tr.appendChild(tdHorario);
+    tr.appendChild(tdI1);
+    tr.appendChild(tdI2);
+    tr.appendChild(tdAcoes);
+
+    return tr;
+}
+
+// CRIAR TODAS AS TABELAS
+function criarTabelaCompleta(){
+    container.innerHTML = "";
+
+    semana.forEach(({dia, horarios}) => {
+        const titulo = document.createElement("h3");
+        titulo.textContent = dia;
+
+        const table = document.createElement("table");
+        table.setAttribute("data-dia", dia);
+
+        table.innerHTML = `
+            <thead>
+                <tr>
+                <th>Horário</th>
+                <th>Instrutor 1</th>
+                <th>Instrutor 2</th>
+                <th>Ações</th>
+                </tr>
+            </thead>
+        `;
+
+        const tbody = document.createElement("tbody");
+
+        horarios.forEach(h => {
+            if(dia === "Terça-feira" && h === "15:00"){
+                const tr = document.createElement("tr");
+                tr.setAttribute("data-reuniao","1");
+
+                tr.innerHTML = `
+                    <td class="horario-cell">${h}</td>
+                    <td colspan="3" style="text-align:center; font-weight:600; color:var(--lilas);">
+                        REUNIÃO – Horário Bloqueado
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+                return;
+            }
+
+            tbody.appendChild(criarLinhaTabela(h));
+        });
+
+        table.appendChild(tbody);
+        container.appendChild(titulo);
+        container.appendChild(table);
+    });
+}
+
+// FILTRAR POR DIA
+function filtrarDia(){
+    const v = selectDia.value;
+
+    document.querySelectorAll("h3, table").forEach(el => {
+        if(v === "todos"){
+            el.style.display = "";
+            return;
+        }
+
+        if(el.tagName === "H3"){
+            el.style.display = el.textContent === v ? "" : "none";
+        } else {
+            const titulo = el.previousElementSibling;
+            el.style.display = titulo.textContent === v ? "" : "none";
+        }
+    });
+}
+
+selectDia.addEventListener("change", filtrarDia);
+
+// INICIAR
+criarTabelaCompleta();
+const saved = carregar();
+if(saved){
+    saved.forEach(diaObj => {
+        const table = document.querySelector(`table[data-dia='${diaObj.dia}']`);
+        if(table){
+            const tbody = table.querySelector("tbody");
+            tbody.innerHTML = "";
+
+            diaObj.linhas.forEach(linha => {
+                tbody.appendChild(criarLinhaTabela(linha.horario, linha));
+            });
+        }
+    });
+}
+
+filtrarDia();
+
+// OBSERVER (salvamento automático)
+const observer = new MutationObserver(() => {
+    clearTimeout(window._saveTimer);
+    window._saveTimer = setTimeout(salvar, 300);
+});
+observer.observe(container, { childList:true, subtree:true });
+
+</script>
+</body>
+</html>
