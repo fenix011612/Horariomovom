@@ -1,380 +1,201 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<title>Grade de Horários Movom</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<title>Entradas MOVOM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-    :root{
-        --lilas:#6a5acd;
-        --ciano:#4fc3f7;
-        --bg:#f7f5ff;
-        --card:#ffffff;
-    }
-    body { font-family: "Poppins", Arial, sans-serif; background: var(--bg); padding: 20px; color: #333; }
-    h2, h3 { text-align: center; color: var(--lilas); font-weight: 600; margin: 8px 0; }
-    .controls{ display:flex; justify-content:center; gap:12px; align-items:center; margin-bottom:16px; }
-    select { padding:8px 10px; border-radius:8px; border:1px solid #c9c9ff; background:#fff; }
-    .container-card{ background:var(--card); border-radius:12px; padding:14px; box-shadow:0 6px 20px rgba(0,0,0,0.06); }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 24px; background: #ffffff; border-radius: 8px; overflow: hidden; }
-    thead th { background: linear-gradient(90deg, var(--lilas), var(--ciano)); color: #fff; padding: 10px; font-size: 13px; letter-spacing: 0.5px; text-align:center; }
-    td { border-bottom: 1px solid #eef6ff; padding: 10px; vertical-align: top; text-align:left; background: #fbfdff; }
-    .horario-cell{ width:90px; text-align:center; font-weight:600; }
-    .instrutor-box{ border-left:4px solid var(--lilas); padding:8px; border-radius:6px; background:#fff; margin-bottom:8px; }
-    .instrutor-box + .instrutor-box{ border-left-color:var(--ciano); }
-    .alunos-box{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
-    .aluno-row{ display:flex; gap:8px; align-items:center; }
-    .aluno-row input{ flex:1; padding:6px; border-radius:6px; border:1px solid #e7f3ff; }
-    .btn{ padding:6px 10px; border-radius:8px; border:none; cursor:pointer; font-weight:500; }
-    .btn-add{ background:var(--ciano); color:#fff; }
-    .btn-remove{ background:#ff6b8a; color:#fff; }
-    .btn-apagar{ background:#ff6b8a; color:#fff; }
-    .small{ font-size:12px; padding:4px 8px; }
-    .reuniao { text-align:center; font-weight:700; color:var(--lilas); background:linear-gradient(90deg,#fff, #fbfdff); padding:10px; border-radius:6px; }
-    @media (max-width:900px){ td{ font-size:13px; } .horario-cell{ width:70px; } }
-    .status { font-size:13px; text-align:center; color:#666; margin-bottom:10px; }
+body{
+    font-family: Arial, sans-serif;
+    background:#f3e9ff;
+    margin:0;
+    padding:20px;
+}
+header{
+    background: linear-gradient(90deg, #9b4dff, #00c2ff);
+    padding:20px;
+    text-align:center;
+    color:white;
+    font-size:24px;
+    font-weight:bold;
+}
+.container{
+    max-width:1100px;
+    margin:30px auto;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th{
+    background:#9b4dff;
+    color:white;
+    padding:10px;
+}
+td{
+    border:1px solid #ddd;
+    padding:6px;
+    text-align:center;
+}
+input, select{
+    width:95%;
+    padding:6px;
+    border-radius:6px;
+    border:1px solid #ccc;
+}
+button{
+    margin-top:20px;
+    padding:12px 18px;
+    background:#9b4dff;
+    color:white;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+    cursor:pointer;
+}
+button:hover{
+    background:#7d36d6;
+}
+.status{
+    text-align:center;
+    margin-top:10px;
+    font-size:14px;
+    color:#666;
+}
 </style>
 </head>
+
 <body>
 
-<div class="container-card">
-    <div class="controls">
-        <label for="diaSemana" style="font-weight:600; color:var(--lilas);">Selecionar dia da semana:</label>
-        <select id="diaSemana" style="padding:8px; border-radius:8px; border:1px solid #c9c9ff; margin-left:6px;">
-            <option value="todos">Todos</option>
-            <option value="Segunda-feira">Segunda-feira</option>
-            <option value="Terça-feira">Terça-feira</option>
-            <option value="Quarta-feira">Quarta-feira</option>
-            <option value="Quinta-feira">Quinta-feira</option>
-            <option value="Sexta-feira">Sexta-feira</option>
-            <option value="Sábado">Sábado</option>
-        </select>
-        <div style="margin-left:12px; font-size:13px; color:#666;">(limite: 5 alunos / instrutor · salva automaticamente)</div>
-    </div>
+<header>Entradas MOVOM</header>
 
-    <div class="status" id="status">Conectando ao Firebase...</div>
+<div class="container">
+<table>
+<thead>
+<tr>
+    <th>Data</th>
+    <th>Nome</th>
+    <th>Valor</th>
+    <th>Pagamento</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
 
-    <h2>Grade de Horários Movom</h2>
-    <div id="container"></div>
+<button onclick="salvar()">Salvar</button>
+<div class="status" id="status">Sincronizando…</div>
 </div>
 
-<!-- Firebase + App logic -->
 <script type="module">
-/* =========================
-   FIREBASE CONFIGuração
-   ========================= */
+/* 🔹 FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-/* Cole sua config aqui (já fornecida por você) */
+/* 🔹 CONFIG FIREBASE */
 const firebaseConfig = {
-  apiKey: "AIzaSyASKbZ204Yls9IU3HenHTsHwqgbpotUga0",
-  authDomain: "horariomovom.firebaseapp.com",
-  projectId: "horariomovom",
-  storageBucket: "horariomovom.firebasestorage.app",
-  messagingSenderId: "827903999846",
-  appId: "1:827903999846:web:e2495e75cc0f8b4ad852a7",
-  databaseURL: "https://horariomovom-default-rtdb.firebaseio.com/"
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_ID",
+  appId: "SEU_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const rootRef = ref(db, 'grades/movom'); // caminho centralizado
+const entradasRef = ref(db, "entradas");
 
-/* =========================
-   APP UI / lógica (baseada no seu código original)
-   ========================= */
-
-function gerarHorarios(inicio, fim){
-    const lista = [];
-    for(let h=inicio; h<fim; h++){
-        lista.push(`${String(h).padStart(2,'0')}:00`);
-    }
-    return lista;
-}
-
-const semana = [
-    { dia: "Segunda-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Terça-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Quarta-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Quinta-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Sexta-feira", horarios: gerarHorarios(7,19) },
-    { dia: "Sábado", horarios: gerarHorarios(7,12) }
-];
-
-const MAX_ALUNOS = 5;
-const container = document.getElementById("container");
-const selectDia = document.getElementById("diaSemana");
+/* 🔹 TABELA */
+const tbody = document.getElementById("tableBody");
 const statusEl = document.getElementById("status");
 
-let isApplyingRemote = false;   // quando true, não dispara salvar no firebase
-let lastLocalSaveAt = 0;
-
-/* UTIL - cria aluno row */
-function criarAlunoRow(nome){
-    const row = document.createElement("div");
-    row.className = "aluno-row";
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = "Nome do aluno";
-    input.value = nome || "";
-    input.addEventListener("input", () => {
-        debouncedSaveToFirebase();
-    });
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "btn btn-remove small";
-    btn.textContent = "X";
-    btn.onclick = () => { row.remove(); debouncedSaveToFirebase(); };
-
-    row.appendChild(input);
-    row.appendChild(btn);
-    return row;
-}
-
-/* UTIL - coluna instrutor */
-function criarColunaInstrutor(valor){
-    const box = document.createElement("div");
-    box.className = "instrutor-box";
-
-    const inputInstr = document.createElement("input");
-    inputInstr.type = "text";
-    inputInstr.placeholder = "Nome do instrutor";
-    inputInstr.value = valor || "";
-    inputInstr.addEventListener("input", () => debouncedSaveToFirebase());
-
-    const alunosBox = document.createElement("div");
-    alunosBox.className = "alunos-box";
-
-    box.appendChild(inputInstr);
-    box.appendChild(alunosBox);
-
-    return { box, alunosBox, inputInstr };
-}
-
-/* cria linha (horário normal) */
-function criarLinhaTabela(horario, saved = {}){
+/* 🔹 CRIAR 31 LINHAS */
+for(let i=0;i<31;i++){
     const tr = document.createElement("tr");
-
-    const tdHorario = document.createElement("td");
-    tdHorario.className = "horario-cell";
-    tdHorario.textContent = horario;
-
-    // instrutor 1
-    const tdInstr1 = document.createElement("td");
-    tdInstr1.className = "instrutor1";
-    const i1 = criarColunaInstrutor(saved.instr1);
-    tdInstr1.appendChild(i1.box);
-    (saved.alunos1 || []).slice(0, MAX_ALUNOS).forEach(n => i1.alunosBox.appendChild(criarAlunoRow(n)));
-
-    const btnAdd1 = document.createElement("button");
-    btnAdd1.type = "button";
-    btnAdd1.className = "btn btn-add small";
-    btnAdd1.textContent = "+ Aluno";
-    btnAdd1.onclick = () => {
-        if (i1.alunosBox.children.length >= MAX_ALUNOS){ alert('Limite de 5 alunos atingido para este instrutor.'); return; }
-        i1.alunosBox.appendChild(criarAlunoRow(''));
-        debouncedSaveToFirebase();
-    };
-    tdInstr1.appendChild(btnAdd1);
-
-    // instrutor 2
-    const tdInstr2 = document.createElement("td");
-    tdInstr2.className = "instrutor2";
-    const i2 = criarColunaInstrutor(saved.instr2);
-    tdInstr2.appendChild(i2.box);
-    (saved.alunos2 || []).slice(0, MAX_ALUNOS).forEach(n => i2.alunosBox.appendChild(criarAlunoRow(n)));
-
-    const btnAdd2 = document.createElement("button");
-    btnAdd2.type = "button";
-    btnAdd2.className = "btn btn-add small";
-    btnAdd2.textContent = "+ Aluno";
-    btnAdd2.onclick = () => {
-        if (i2.alunosBox.children.length >= MAX_ALUNOS){ alert('Limite de 5 alunos atingido para este instrutor.'); return; }
-        i2.alunosBox.appendChild(criarAlunoRow(''));
-        debouncedSaveToFirebase();
-    };
-    tdInstr2.appendChild(btnAdd2);
-
-    // ações
-    const tdAcoes = document.createElement("td");
-    tdAcoes.style.textAlign = 'center';
-    const btnApagar = document.createElement("button");
-    btnApagar.type = "button";
-    btnApagar.className = "btn btn-apagar small";
-    btnApagar.textContent = "Apagar horário";
-    btnApagar.onclick = ()=>{ tr.remove(); debouncedSaveToFirebase(); };
-    tdAcoes.appendChild(btnApagar);
-
-    tr.appendChild(tdHorario);
-    tr.appendChild(tdInstr1);
-    tr.appendChild(tdInstr2);
-    tr.appendChild(tdAcoes);
-
-    return tr;
+    tr.innerHTML = `
+        <td><input type="date"></td>
+        <td><input type="text" placeholder="Nome"></td>
+        <td><input type="number" step="0.01"></td>
+        <td>
+            <select>
+                <option>Pix</option>
+                <option>Crédito</option>
+                <option>Débito</option>
+                <option>Dinheiro</option>
+            </select>
+        </td>
+    `;
+    tbody.appendChild(tr);
 }
 
-/* cria grade inicial no DOM */
-function criarTabelaCompleta(){
-    container.innerHTML = '';
-    semana.forEach(({dia, horarios})=>{
-        const titulo = document.createElement('h3');
-        titulo.textContent = dia;
-        container.appendChild(titulo);
-
-        const table = document.createElement('table');
-        table.setAttribute('data-dia', dia);
-
-        const thead = document.createElement('thead');
-        thead.innerHTML = `<tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th><th>Ações</th></tr>`;
-        table.appendChild(thead);
-
-        const tbody = document.createElement('tbody');
-
-        horarios.forEach(h=>{
-            // reunião fixa terça 15:00
-            if(dia === "Terça-feira" && h === "15:00"){
-                const tr = document.createElement('tr');
-                tr.dataset.reuniao = "1";
-                tr.innerHTML = `<td class="horario-cell">${h}</td><td colspan="3" style="text-align:center; font-weight:600; color:var(--lilas);">REUNIÃO – Horário Bloqueado</td>`;
-                tbody.appendChild(tr);
-                return;
-            }
-            tbody.appendChild(criarLinhaTabela(h));
-        });
-
-        table.appendChild(tbody);
-        container.appendChild(table);
-    });
-}
-
-/* monta o modelo de dados a partir do DOM */
-function montarModelo(){
-    const data = { days: {} };
-    document.querySelectorAll('table[data-dia]').forEach(table=>{
-        const dia = table.getAttribute('data-dia');
-        const rows = [];
-        table.querySelectorAll('tbody tr').forEach(tr=>{
-            if(tr.dataset.reuniao === '1') return;
-            const horario = tr.querySelector('.horario-cell').textContent.trim();
-            const instr1 = tr.querySelector('.instrutor1 input')?.value || '';
-            const instr2 = tr.querySelector('.instrutor2 input')?.value || '';
-            const alunos1 = [...tr.querySelectorAll('.instrutor1 .aluno-row input')].map(i=>i.value).filter(v=>v && v.trim()!=='');
-            const alunos2 = [...tr.querySelectorAll('.instrutor2 .aluno-row input')].map(i=>i.value).filter(v=>v && v.trim()!=='');
-            rows.push({ horario, instr1, instr2, alunos1, alunos2 });
-        });
-        data.days[dia] = rows;
-    });
-    return data;
-}
-
-/* aplica dados do modelo no DOM (substitui linhas) */
-function aplicarModeloNoDOM(model){
-    if(!model || !model.days) return;
-    isApplyingRemote = true;
-    try {
-        Object.keys(model.days).forEach(dia=>{
-            const table = document.querySelector(`table[data-dia="${dia}"]`);
-            if(!table) return;
-            const tbody = table.querySelector('tbody');
-            tbody.innerHTML = '';
-            model.days[dia].forEach(linha=>{
-                tbody.appendChild(criarLinhaTabela(linha.horario, linha));
+/* 🔹 MONTAR DADOS */
+function montarDados(){
+    const dados = [];
+    document.querySelectorAll("#tableBody tr").forEach(tr=>{
+        const inputs = tr.querySelectorAll("input, select");
+        if(inputs[1].value || inputs[2].value){
+            dados.push({
+                data: inputs[0].value,
+                nome: inputs[1].value,
+                valor: parseFloat(inputs[2].value) || 0,
+                pagamento: inputs[3].value
             });
-        });
-    } finally {
-        // small delay para evitar loops
-        setTimeout(()=>{ isApplyingRemote = false; }, 500);
-    }
+        }
+    });
+    return dados;
 }
 
-/* SALVAR no Firebase (escreve o objeto todo) */
-async function salvarNoFirebase(){
-    if(isApplyingRemote) return; // evita salvar quando estamos aplicando atualização remota
-    const model = montarModelo();
-    lastLocalSaveAt = Date.now();
-    statusEl.textContent = 'Salvando...';
-    try {
-        await set(rootRef, model);
-        statusEl.textContent = 'Salvo';
-    } catch(e){
-        console.error('Erro ao salvar no Firebase', e);
-        statusEl.textContent = 'Erro ao salvar';
-    }
-}
-
-/* DEBOUNCE wrapper */
-let _saveTimer = null;
-function debouncedSaveToFirebase(){
-    clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(()=>{ salvarNoFirebase(); }, 400);
-}
-
-/* ESCUTA em tempo real - aplica alterações vindas do Firebase */
-onValue(rootRef, (snap) => {
-    const data = snap.val();
-    if(!data) {
-        statusEl.textContent = 'Nenhum dado salvo ainda.';
-        return;
-    }
-    // evita sobrescrever logo após um save local
-    const sinceLocal = Date.now() - lastLocalSaveAt;
-    if(sinceLocal < 800) {
-        // se salvamos localmente há menos de 800ms, ignoramos essa atualização
-        // (previne eco)
-        console.debug('Atualização do servidor ignorada por save local recente.');
-        return;
-    }
-    statusEl.textContent = 'Atualizando (recebido do servidor)...';
-    aplicarModeloNoDOM(data);
-    statusEl.textContent = 'Sincronizado';
-}, (err) => {
-    console.error('onValue erro', err);
-    statusEl.textContent = 'Erro de sincronização';
-});
-
-/* Filtrar por dia */
-function filtrarDia(){
-    const v = selectDia.value;
-    document.querySelectorAll('h3, table').forEach(el=>{
-        if(v === 'todos') { el.style.display = ''; return; }
-        if(el.tagName === 'H3') el.style.display = el.textContent === v ? '' : 'none';
-        else {
-            const prev = el.previousElementSibling;
-            el.style.display = prev && prev.textContent === v ? '' : 'none';
+/* 🔹 APLICAR DADOS NA TELA */
+function aplicarDados(dados){
+    document.querySelectorAll("#tableBody tr").forEach((tr,i)=>{
+        if(dados[i]){
+            const inputs = tr.querySelectorAll("input, select");
+            inputs[0].value = dados[i].data || "";
+            inputs[1].value = dados[i].nome || "";
+            inputs[2].value = dados[i].valor || "";
+            inputs[3].value = dados[i].pagamento || "Pix";
         }
     });
 }
-selectDia.addEventListener('change', filtrarDia);
 
-/* Inicialização */
-criarTabelaCompleta();
+/* 🔹 SALVAR */
+window.salvar = function(){
+    const dados = montarDados();
+    localStorage.setItem("entradas_movom", JSON.stringify(dados));
+    set(entradasRef, dados);
+    statusEl.textContent = "Salvo localmente e no Firebase";
+};
 
-// Tentativa de carregar o estado inicial do Firebase (caso já exista)
-onValue(rootRef, (snap) => {
-    const data = snap.val();
-    if(data){
-        aplicarModeloNoDOM(data);
-        statusEl.textContent = 'Dados carregados';
-    } else {
-        statusEl.textContent = 'Nenhum dado encontrado — use a interface e dados serão salvos automaticamente';
-    }
-}, { onlyOnce: true });
-
-filtrarDia();
-
-/* Observer para salvar automaticamente se o DOM for mutado (ex: inputs adicionados) */
-const observer = new MutationObserver(() => {
-    clearTimeout(window._saveTimer);
-    window._saveTimer = setTimeout(()=>{
-        if(!isApplyingRemote) salvarNoFirebase();
-    }, 400);
+/* 🔹 AUTO-SAVE (sem travar digitação) */
+let timer = null;
+document.addEventListener("input", ()=>{
+    clearTimeout(timer);
+    timer = setTimeout(()=>{
+        salvar();
+    }, 500);
 });
-observer.observe(container, { childList:true, subtree:true });
 
+/* 🔹 CARREGAR LOCALSTORAGE PRIMEIRO */
+const local = localStorage.getItem("entradas_movom");
+if(local){
+    aplicarDados(JSON.parse(local));
+    statusEl.textContent = "Dados carregados do dispositivo";
+}
+
+/* 🔹 SINCRONIZAÇÃO FIREBASE */
+onValue(entradasRef, snapshot=>{
+    const dados = snapshot.val();
+    if(!dados) return;
+    aplicarDados(dados);
+    localStorage.setItem("entradas_movom", JSON.stringify(dados));
+    statusEl.textContent = "Sincronizado com Firebase";
+});
 </script>
+
 </body>
 </html>
-
