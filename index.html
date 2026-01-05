@@ -5,118 +5,203 @@
 <title>Grade de Horários Movom</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<!-- ⚠️ SEU CSS ORIGINAL (inalterado) -->
 <style>
-/* ... SEU CSS EXATAMENTE COMO ESTAVA ... */
+:root{
+    --lilas:#6a5acd;
+    --ciano:#4fc3f7;
+    --bg:#f7f5ff;
+    --card:#ffffff;
+}
+body{font-family:Poppins,Arial,sans-serif;background:var(--bg);padding:20px;color:#333}
+h2,h3{text-align:center;color:var(--lilas);margin:8px 0}
+.controls{display:flex;justify-content:center;gap:12px;align-items:center;margin-bottom:16px}
+select{padding:8px 10px;border-radius:8px;border:1px solid #c9c9ff}
+.container-card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
+table{width:100%;border-collapse:collapse;margin-bottom:24px}
+thead th{background:linear-gradient(90deg,var(--lilas),var(--ciano));color:#fff;padding:10px}
+td{border-bottom:1px solid #eef6ff;padding:10px;background:#fbfdff}
+.horario-cell{text-align:center;font-weight:600;width:90px}
+.instrutor-box{border-left:4px solid var(--lilas);padding:8px;border-radius:6px;background:#fff;margin-bottom:6px}
+.alunos-box{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.aluno-row{display:flex;gap:6px}
+.aluno-row input{flex:1;padding:6px;border-radius:6px;border:1px solid #ddd}
+.btn{padding:5px 10px;border-radius:6px;border:none;cursor:pointer}
+.btn-add{background:var(--ciano);color:#fff}
+.btn-remove,.btn-apagar{background:#ff6b8a;color:#fff}
+.small{font-size:12px}
 </style>
 </head>
+
 <body>
 
 <div class="container-card">
-    <div class="controls">
-        <label for="diaSemana">Selecionar dia:</label>
-        <select id="diaSemana">
-            <option value="todos">Todos</option>
-            <option>Segunda-feira</option>
-            <option>Terça-feira</option>
-            <option>Quarta-feira</option>
-            <option>Quinta-feira</option>
-            <option>Sexta-feira</option>
-            <option>Sábado</option>
-        </select>
-    </div>
-
-    <div class="status" id="status">Conectando…</div>
-    <div id="container"></div>
+<div class="controls">
+<label>Dia:</label>
+<select id="diaSemana">
+<option value="todos">Todos</option>
+<option>Segunda-feira</option>
+<option>Terça-feira</option>
+<option>Quarta-feira</option>
+<option>Quinta-feira</option>
+<option>Sexta-feira</option>
+<option>Sábado</option>
+</select>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+<h2>Grade de Horários Movom</h2>
+<div id="container"></div>
+</div>
 
-/* 🔹 FIREBASE CONFIG (SEU) */
-const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "horariomovom.firebaseapp.com",
-  databaseURL: "https://horariomovom-default-rtdb.firebaseio.com",
-  projectId: "horariomovom",
-  storageBucket: "horariomovom.appspot.com",
-  messagingSenderId: "827903999846",
-  appId: "1:827903999846:web:e2495e75cc0f8b4ad852a7"
+<script>
+const MAX_ALUNOS=5;
+const container=document.getElementById("container");
+const selectDia=document.getElementById("diaSemana");
+
+function gerarHorarios(i,f){
+    const a=[];
+    for(let h=i;h<f;h++) a.push(String(h).padStart(2,"0")+":00");
+    return a;
+}
+
+const semana=[
+ {dia:"Segunda-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Terça-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Quarta-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Quinta-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Sexta-feira",horarios:gerarHorarios(7,19)},
+ {dia:"Sábado",horarios:gerarHorarios(7,12)}
+];
+
+// ====== LOCALSTORAGE ======
+function salvar(){
+    const data=[];
+    document.querySelectorAll("table[data-dia]").forEach(t=>{
+        const dia=t.dataset.dia;
+        const linhas=[];
+        t.querySelectorAll("tbody tr").forEach(tr=>{
+            if(tr.dataset.reuniao) return;
+            linhas.push({
+                horario:tr.querySelector(".horario-cell").textContent,
+                instr1:tr.querySelector(".instrutor1 input")?.value||"",
+                instr2:tr.querySelector(".instrutor2 input")?.value||"",
+                alunos1:[...tr.querySelectorAll(".instrutor1 .aluno-row input")].map(i=>i.value),
+                alunos2:[...tr.querySelectorAll(".instrutor2 .aluno-row input")].map(i=>i.value)
+            });
+        });
+        data.push({dia,linhas});
+    });
+    localStorage.setItem("movom-grade",JSON.stringify(data));
+}
+
+function carregar(){
+    return JSON.parse(localStorage.getItem("movom-grade")||"null");
+}
+
+let saveTimer=null;
+function salvarDebounce(){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(salvar,300);
+}
+
+// ====== UI ======
+function alunoRow(v=""){
+    const d=document.createElement("div");
+    d.className="aluno-row";
+    const i=document.createElement("input");
+    i.value=v;
+    i.oninput=salvarDebounce;
+    const b=document.createElement("button");
+    b.textContent="X";
+    b.className="btn btn-remove small";
+    b.onclick=()=>{d.remove();salvarDebounce()};
+    d.append(i,b);
+    return d;
+}
+
+function instrutorCol(v=""){
+    const box=document.createElement("div");
+    box.className="instrutor-box";
+    const i=document.createElement("input");
+    i.placeholder="Instrutor";
+    i.value=v;
+    i.oninput=salvarDebounce;
+    const alunos=document.createElement("div");
+    alunos.className="alunos-box";
+    box.append(i,alunos);
+    return{box,alunos};
+}
+
+function linha(h,s={}){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td class="horario-cell">${h}</td>`;
+    ["instr1","instr2"].forEach((k,idx)=>{
+        const td=document.createElement("td");
+        td.className="instrutor"+(idx+1);
+        const col=instrutorCol(s[k]);
+        td.append(col.box);
+        (s["alunos"+(idx+1)]||[]).slice(0,MAX_ALUNOS)
+          .forEach(a=>col.alunos.append(alunoRow(a)));
+        const b=document.createElement("button");
+        b.textContent="+ Aluno";
+        b.className="btn btn-add small";
+        b.onclick=()=>{
+            if(col.alunos.children.length>=MAX_ALUNOS) return alert("Máx 5 alunos");
+            col.alunos.append(alunoRow());
+            salvarDebounce();
+        };
+        td.append(b);
+        tr.append(td);
+    });
+    const tdA=document.createElement("td");
+    const ap=document.createElement("button");
+    ap.textContent="Apagar";
+    ap.className="btn btn-apagar small";
+    ap.onclick=()=>{tr.remove();salvarDebounce()};
+    tdA.append(ap);
+    tr.append(tdA);
+    return tr;
+}
+
+function criarTudo(){
+    container.innerHTML="";
+    semana.forEach(d=>{
+        container.innerHTML+=`<h3>${d.dia}</h3>`;
+        const t=document.createElement("table");
+        t.dataset.dia=d.dia;
+        t.innerHTML="<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th><th>Ações</th></tr></thead>";
+        const tb=document.createElement("tbody");
+        d.horarios.forEach(h=>{
+            if(d.dia==="Terça-feira" && h==="15:00"){
+                tb.innerHTML+=`<tr data-reuniao="1"><td>${h}</td><td colspan="3"><b>REUNIÃO</b></td></tr>`;
+            }else tb.append(linha(h));
+        });
+        t.append(tb);
+        container.append(t);
+    });
+}
+
+function aplicarDados(dados){
+    if(!dados) return;
+    dados.forEach(d=>{
+        const t=document.querySelector(`table[data-dia="${d.dia}"] tbody`);
+        if(!t) return;
+        t.innerHTML="";
+        d.linhas.forEach(l=>t.append(linha(l.horario,l)));
+    });
+}
+
+selectDia.onchange=()=>{
+    document.querySelectorAll("h3,table").forEach(e=>{
+        if(selectDia.value==="todos") e.style.display="";
+        else if(e.tagName==="H3") e.style.display=e.textContent===selectDia.value?"":"none";
+        else e.style.display=e.previousElementSibling.textContent===selectDia.value?"":"none";
+    });
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const rootRef = ref(db, "grades/movom");
-
-/* =========================
-   CONTROLE DE SINCRONIZAÇÃO
-========================= */
-let isRemote = false;
-
-/* =========================
-   LOCALSTORAGE
-========================= */
-function salvarLocal(data){
-    localStorage.setItem("movom_grade", JSON.stringify(data));
-}
-function carregarLocal(){
-    const d = localStorage.getItem("movom_grade");
-    return d ? JSON.parse(d) : null;
-}
-
-/* =========================
-   SEU CÓDIGO ORIGINAL
-   (funções gerarHorarios, criarTabelaCompleta,
-    montarModelo, aplicarModeloNoDOM, etc)
-   ⚠️ NÃO ALTERADAS
-========================= */
-
-/* =========================
-   SALVAR
-========================= */
-function salvar(){
-    if(isRemote) return;
-    const data = montarModelo();
-    salvarLocal(data);
-    set(rootRef, data);
-    document.getElementById("status").textContent = "Salvo";
-}
-
-/* =========================
-   AUTO SAVE (SEM TRAVAR)
-========================= */
-let timer = null;
-document.addEventListener("input", ()=>{
-    clearTimeout(timer);
-    timer = setTimeout(salvar, 500);
-});
-
-/* =========================
-   FIREBASE → TELA
-========================= */
-onValue(rootRef, snap=>{
-    const data = snap.val();
-    if(!data) return;
-    isRemote = true;
-    aplicarModeloNoDOM(data);
-    salvarLocal(data);
-    isRemote = false;
-    document.getElementById("status").textContent = "Sincronizado";
-});
-
-/* =========================
-   INICIALIZAÇÃO
-========================= */
-criarTabelaCompleta();
-
-const local = carregarLocal();
-if(local){
-    aplicarModeloNoDOM(local);
-    set(rootRef, local);
-    document.getElementById("status").textContent = "Dados restaurados";
-}
+// INIT
+criarTudo();
+aplicarDados(carregar());
 </script>
-
 </body>
 </html>
+
