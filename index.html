@@ -1,220 +1,236 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Grade de Horários Movom</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 :root{
-    --lilas:#6a5acd;
-    --ciano:#4fc3f7;
-    --bg:#f7f5ff;
+ --lilas:#6a5acd;
+ --ciano:#4fc3f7;
+ --bg:#f7f5ff;
+ --card:#ffffff;
 }
 body{
-    font-family:Poppins, Arial, sans-serif;
-    background:var(--bg);
-    padding:20px;
+ font-family:Poppins,Arial,sans-serif;
+ background:var(--bg);
+ padding:20px;
 }
-h2,h3{
-    text-align:center;
-    color:var(--lilas);
-}
+h2,h3{ text-align:center; color:var(--lilas); }
 .container-card{
-    background:#fff;
-    border-radius:12px;
-    padding:14px;
+ background:var(--card);
+ padding:16px;
+ border-radius:12px;
+ box-shadow:0 6px 20px rgba(0,0,0,.06);
 }
+.controls{
+ display:flex;
+ justify-content:center;
+ gap:12px;
+ margin-bottom:16px;
+}
+select{ padding:8px; border-radius:8px; }
 table{
-    width:100%;
-    border-collapse:collapse;
-    margin-bottom:24px;
+ width:100%;
+ border-collapse:collapse;
+ margin-bottom:24px;
 }
-thead th{
-    background:linear-gradient(90deg,var(--lilas),var(--ciano));
-    color:#fff;
-    padding:10px;
+th{
+ background:linear-gradient(90deg,var(--lilas),var(--ciano));
+ color:#fff;
+ padding:10px;
 }
 td{
-    border-bottom:1px solid #eee;
-    padding:10px;
+ padding:10px;
+ border-bottom:1px solid #eee;
+ vertical-align:top;
 }
-.horario-cell{
-    width:90px;
-    text-align:center;
-    font-weight:600;
+.horario-cell{ width:80px; font-weight:600; text-align:center; }
+.instrutor-box{
+ background:#fff;
+ border-left:4px solid var(--lilas);
+ padding:8px;
+ border-radius:6px;
 }
-.alunos-box{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-    margin-top:6px;
+.instrutor-box + .instrutor-box{ border-left-color:var(--ciano); }
+.alunos-box{ margin-top:6px; display:flex; flex-direction:column; gap:6px; }
+.aluno-row{ display:flex; gap:6px; }
+input{ padding:6px; border-radius:6px; border:1px solid #ddd; width:100%; }
+button{
+ border:none;
+ border-radius:6px;
+ padding:6px 10px;
+ cursor:pointer;
 }
-.aluno-row{
-    display:flex;
-    gap:6px;
-}
-.aluno-row input{
-    flex:1;
-    padding:6px;
-}
-.btn{
-    border:none;
-    border-radius:6px;
-    padding:6px 10px;
-    cursor:pointer;
-}
-.btn-add{background:var(--ciano);color:#fff;}
-.btn-remove{background:#ff6b8a;color:#fff;}
-.small{font-size:12px;}
+.btn-add{ background:var(--ciano); color:#fff; }
+.btn-remove,.btn-apagar{ background:#ff6b8a; color:#fff; }
+.small{ font-size:12px; }
 </style>
 </head>
 
 <body>
 
 <div class="container-card">
-    <h2>Grade de Horários Movom</h2>
-    <div id="container"></div>
+ <div class="controls">
+  <select id="diaSemana">
+   <option value="todos">Todos</option>
+   <option>Segunda-feira</option>
+   <option>Terça-feira</option>
+   <option>Quarta-feira</option>
+   <option>Quinta-feira</option>
+   <option>Sexta-feira</option>
+   <option>Sábado</option>
+  </select>
+ </div>
+
+ <h2>Grade de Horários Movom</h2>
+ <div id="container"></div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+/* FIREBASE */
 const firebaseConfig = {
-  apiKey: "AIzaSyASKbZ204Yls9IU3HenHTsHwqgbpotUga0",
-  authDomain: "horariomovom.firebaseapp.com",
-  databaseURL: "https://horariomovom-default-rtdb.firebaseio.com",
-  projectId: "horariomovom",
-  storageBucket: "horariomovom.firebasestorage.app",
-  messagingSenderId: "827903999846",
-  appId: "1:827903999846:web:e2495e75cc0f8b4ad852a7"
+ apiKey:"AIzaSyASKbZ204Yls9IU3HenHTsHwqgbpotUga0",
+ authDomain:"horariomovom.firebaseapp.com",
+ databaseURL:"https://horariomovom-default-rtdb.firebaseio.com",
+ projectId:"horariomovom",
+ storageBucket:"horariomovom.firebasestorage.app",
+ messagingSenderId:"827903999846",
+ appId:"1:827903999846:web:e2495e75cc0f8b4ad852a7"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const gradeRef = ref(db, "gradeHorarios");
+const gradeRef = ref(db,"gradeHorarios");
 
-const MAX_ALUNOS = 5;
-const container = document.getElementById("container");
-
-let saveTimer = null;
-let lastFocused = null;
-
-/* 🔥 FUNÇÃO CORRETA */
-function gerarHorarios(inicio, fimInclusivo){
-    const arr=[];
-    for(let h=inicio; h<=fimInclusivo; h++){
-        arr.push(String(h).padStart(2,"0")+":00");
-    }
-    return arr;
+/* HORÁRIOS */
+function gerarHorarios(i,f){
+ const arr=[];
+ for(let h=i;h<=f;h++) arr.push(String(h).padStart(2,"0")+":00");
+ return arr;
 }
 
-/* ✅ HORÁRIOS DEFINITIVOS */
-const semana = [
- { dia:"Segunda-feira", horarios: gerarHorarios(7,19) },
- { dia:"Terça-feira",  horarios: gerarHorarios(7,19) },
- { dia:"Quarta-feira", horarios: gerarHorarios(7,19) },
- { dia:"Quinta-feira", horarios: gerarHorarios(7,19) },
- { dia:"Sexta-feira",  horarios: gerarHorarios(7,18) },
- { dia:"Sábado",       horarios: gerarHorarios(7,10) }
+const semana=[
+ {dia:"Segunda-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Terça-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Quarta-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Quinta-feira",horarios:gerarHorarios(7,20)},
+ {dia:"Sexta-feira",horarios:gerarHorarios(7,18)},
+ {dia:"Sábado",horarios:gerarHorarios(7,10)}
 ];
 
-function salvarFirebase(){
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-        const data = {};
-        document.querySelectorAll("table[data-dia]").forEach(table=>{
-            const dia = table.dataset.dia;
-            data[dia] = [];
-            table.querySelectorAll("tbody tr").forEach(tr=>{
-                data[dia].push({
-                    horario: tr.querySelector(".horario-cell").textContent,
-                    instr1: tr.querySelector(".i1").value,
-                    instr2: tr.querySelector(".i2").value,
-                    alunos1:[...tr.querySelectorAll(".a1 input")].map(i=>i.value),
-                    alunos2:[...tr.querySelectorAll(".a2 input")].map(i=>i.value)
-                });
-            });
-        });
-        set(gradeRef, data);
-    }, 300);
+const MAX=5;
+const container=document.getElementById("container");
+const selectDia=document.getElementById("diaSemana");
+let cache=null;
+let timer=null;
+
+/* SAVE */
+function salvar(){
+ clearTimeout(timer);
+ timer=setTimeout(()=>{
+  set(gradeRef,cache);
+ },300);
 }
 
-function criarAluno(nome){
-    const d=document.createElement("div");
-    d.className="aluno-row";
-    const i=document.createElement("input");
-    i.value=nome||"";
-    i.onfocus=()=>lastFocused=i;
-    i.oninput=salvarFirebase;
-    const b=document.createElement("button");
-    b.textContent="X";
-    b.className="btn btn-remove small";
-    b.onclick=()=>{d.remove();salvarFirebase();};
-    d.append(i,b);
-    return d;
+/* UI */
+function alunoRow(nome,cb){
+ const d=document.createElement("div");
+ d.className="aluno-row";
+ const i=document.createElement("input");
+ i.value=nome||"";
+ i.oninput=e=>{cb(e.target.value); salvar();};
+ const b=document.createElement("button");
+ b.textContent="X";
+ b.className="btn-remove small";
+ b.onclick=()=>{cb(null,true); salvar();};
+ d.append(i,b);
+ return d;
 }
 
-function criarLinha(l){
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td class="horario-cell">${l.horario}</td>
-      <td>
-        <input class="i1">
-        <div class="alunos-box a1"></div>
-        <button class="btn btn-add small">+ Aluno</button>
-      </td>
-      <td>
-        <input class="i2">
-        <div class="alunos-box a2"></div>
-        <button class="btn btn-add small">+ Aluno</button>
-      </td>`;
-    tr.querySelector(".i1").value=l.instr1||"";
-    tr.querySelector(".i2").value=l.instr2||"";
-    tr.querySelectorAll("input").forEach(i=>{
-        i.onfocus=()=>lastFocused=i;
-        i.oninput=salvarFirebase;
-    });
-    l.alunos1?.forEach(a=>tr.querySelector(".a1").appendChild(criarAluno(a)));
-    l.alunos2?.forEach(a=>tr.querySelector(".a2").appendChild(criarAluno(a)));
-    tr.querySelectorAll(".btn-add")[0].onclick=()=>{
-        if(tr.querySelector(".a1").children.length<MAX_ALUNOS){
-            tr.querySelector(".a1").appendChild(criarAluno(""));
-            salvarFirebase();
-        }
-    };
-    tr.querySelectorAll(".btn-add")[1].onclick=()=>{
-        if(tr.querySelector(".a2").children.length<MAX_ALUNOS){
-            tr.querySelector(".a2").appendChild(criarAluno(""));
-            salvarFirebase();
-        }
-    };
-    return tr;
+function instrutorBox(data){
+ const box=document.createElement("div");
+ box.className="instrutor-box";
+ const inp=document.createElement("input");
+ inp.value=data.nome||"";
+ inp.oninput=e=>{data.nome=e.target.value; salvar();};
+ const alunos=document.createElement("div");
+ alunos.className="alunos-box";
+
+ data.alunos.forEach((a,idx)=>{
+  alunos.appendChild(alunoRow(a,(v,del)=>{
+   if(del) data.alunos.splice(idx,1);
+   else data.alunos[idx]=v;
+  }));
+ });
+
+ const add=document.createElement("button");
+ add.textContent="+ Aluno";
+ add.className="btn-add small";
+ add.onclick=()=>{
+  if(data.alunos.length>=MAX) return alert("Máx 5 alunos");
+  data.alunos.push("");
+  salvar();
+ };
+
+ box.append(inp,alunos,add);
+ return box;
 }
 
-function render(data){
-    container.innerHTML="";
-    semana.forEach(d=>{
-        const h3=document.createElement("h3");
-        h3.textContent=d.dia;
-        const table=document.createElement("table");
-        table.dataset.dia=d.dia;
-        table.innerHTML="<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th></tr></thead>";
-        const tb=document.createElement("tbody");
+function render(){
+ container.innerHTML="";
+ semana.forEach(d=>{
+  const h3=document.createElement("h3");
+  h3.textContent=d.dia;
+  const t=document.createElement("table");
+  const tb=document.createElement("tbody");
 
-        (data?.[d.dia] || d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]})))
-          .forEach(l=>tb.appendChild(criarLinha(l)));
+  d.horarios.forEach(h=>{
+   const l=cache[d.dia][h];
+   const tr=document.createElement("tr");
+   tr.innerHTML=`<td class="horario-cell">${h}</td>`;
+   const td1=document.createElement("td");
+   const td2=document.createElement("td");
+   td1.appendChild(instrutorBox(l.i1));
+   td2.appendChild(instrutorBox(l.i2));
+   tr.append(td1,td2);
+   tb.appendChild(tr);
+  });
 
-        table.appendChild(tb);
-        container.append(h3,table);
-    });
-    if(lastFocused) lastFocused.focus();
+  t.appendChild(tb);
+  container.append(h3,t);
+ });
 }
 
+/* REALTIME */
 onValue(gradeRef,snap=>{
-    render(snap.val());
+ if(snap.exists()){
+  cache=snap.val();
+ }else{
+  cache={};
+  semana.forEach(d=>{
+   cache[d.dia]={};
+   d.horarios.forEach(h=>{
+    cache[d.dia][h]={ i1:{nome:"",alunos:[]}, i2:{nome:"",alunos:[]} };
+   });
+  });
+  salvar();
+ }
+ render();
 });
+
+/* FILTRO */
+selectDia.onchange=()=>{
+ document.querySelectorAll("h3,table").forEach(e=>{
+  if(selectDia.value==="todos") e.style.display="";
+  else if(e.tagName==="H3") e.style.display=e.textContent===selectDia.value?"":"none";
+  else e.style.display=e.previousElementSibling.textContent===selectDia.value?"":"none";
+ });
+};
 </script>
 
 </body>
