@@ -152,4 +152,24 @@ function montarAgenda(containerId, path, nomeInstrutor){
       const h3=document.createElement("h3");
       h3.innerText=d.dia;
       const table=document.createElement("table");
+      table.dataset.dia=d.dia;
+      table.innerHTML="<thead><tr><th>Hora</th><th>Instrutora</th></tr></thead>";
+      const tb=document.createElement("tbody");
+      const salvo=dados?.find(x=>x.dia===d.dia);
+      d.horas.forEach(h=>{
+        tb.appendChild(linha(h,salvo?.linhas?.find(l=>l.hora===h)));
+      });
+      table.appendChild(tb);
+      container.appendChild(h3);
+      container.appendChild(table);
+    });
+  });
+}
 
+// ================= INICIAR AGENDAS =================
+montarAgenda("container-geral","agenda/geral","Instrutora");
+montarAgenda("container-ale","agenda/ale","Ale");
+</script>
+
+</body>
+</html>
