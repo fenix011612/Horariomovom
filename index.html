@@ -2,10 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Agenda Ale - Movom</title>
+<title>Grade de Horários Movom</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- FIREBASE -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
@@ -16,80 +16,51 @@
   --bg:#f7f5ff;
 }
 body{
-  font-family:Poppins,Arial,sans-serif;
+  font-family:Poppins,Arial;
   background:var(--bg);
   padding:20px;
 }
-h2,h3{
-  text-align:center;
-  color:var(--lilas);
-}
-select{
-  padding:8px 12px;
-  border-radius:8px;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-  background:#fff;
-  margin-bottom:30px;
-  border-radius:8px;
-  overflow:hidden;
-}
-th{
-  background:linear-gradient(90deg,var(--lilas),var(--ciano));
-  color:#fff;
-  padding:10px;
-}
-td{
-  padding:10px;
-  border-bottom:1px solid #eee;
-  vertical-align:top;
-}
-.hora{
-  width:80px;
-  text-align:center;
-  font-weight:600;
-}
-.aluno{
+h2,h3{text-align:center;color:var(--lilas);}
+.tabs{
   display:flex;
-  gap:6px;
-  margin-bottom:6px;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:20px;
 }
-.aluno input{
-  flex:1;
-  padding:6px;
-  border-radius:6px;
-  border:1px solid #ddd;
-}
-button{
-  border:none;
-  border-radius:6px;
-  padding:6px 10px;
+.tab{
+  padding:8px 16px;
+  border-radius:20px;
   cursor:pointer;
+  background:#ddd;
 }
-.add{ background:var(--ciano); color:#fff; }
-.rem{ background:#ff6b8a; color:#fff; }
+.tab.active{
+  background:var(--lilas);
+  color:#fff;
+}
+.aba{display:none;}
+.aba.active{display:block;}
 </style>
 </head>
 
 <body>
 
-<h2>Agenda da Instrutora Ale</h2>
+<h2>Grade de Horários Movom</h2>
 
-<div style="text-align:center;margin-bottom:20px;">
-  <select id="filtro">
-    <option value="todos">Todos</option>
-    <option>Segunda-feira</option>
-    <option>Terça-feira</option>
-    <option>Quarta-feira</option>
-    <option>Quinta-feira</option>
-    <option>Sexta-feira</option>
-    <option>Sábado</option>
-  </select>
+<!-- ABAS -->
+<div class="tabs">
+  <div class="tab active" data-aba="geral">Agenda Geral</div>
+  <div class="tab" data-aba="ale">Agenda Ale</div>
 </div>
 
-<div id="container"></div>
+<!-- ABA GERAL -->
+<div id="aba-geral" class="aba active">
+  <div id="container-geral"></div>
+</div>
+
+<!-- ABA ALE -->
+<div id="aba-ale" class="aba">
+  <div id="container-ale"></div>
+</div>
 
 <script>
 // ================= FIREBASE =================
@@ -102,123 +73,83 @@ const firebaseConfig = {
   messagingSenderId: "827903999846",
   appId: "1:827903999846:web:e2495e75cc0f8b4ad852a7"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ================= HORÁRIOS =================
-function gerarHoras(inicio,fim){
-  const h=[];
-  for(let i=inicio;i<fim;i++){
-    h.push(`${String(i).padStart(2,"0")}:00`);
+// ================= ABAS =================
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".aba").forEach(a=>a.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("aba-"+tab.dataset.aba).classList.add("active");
   }
+});
+
+// ================= ESTRUTURA BASE =================
+function horas(i,f){
+  const h=[];
+  for(let x=i;x<f;x++) h.push(`${String(x).padStart(2,"0")}:00`);
   return h;
 }
 
 const semana = [
-  { dia:"Segunda-feira", horas:gerarHoras(7,19) },
-  { dia:"Terça-feira",  horas:gerarHoras(7,19) },
-  { dia:"Quarta-feira", horas:gerarHoras(7,19) },
-  { dia:"Quinta-feira", horas:gerarHoras(7,19) },
-  { dia:"Sexta-feira",  horas:gerarHoras(7,18) },
-  { dia:"Sábado",       horas:gerarHoras(7,11) }
+  {dia:"Segunda-feira",horas:horas(7,19)},
+  {dia:"Terça-feira",horas:horas(7,19)},
+  {dia:"Quarta-feira",horas:horas(7,19)},
+  {dia:"Quinta-feira",horas:horas(7,19)},
+  {dia:"Sexta-feira",horas:horas(7,18)},
+  {dia:"Sábado",horas:horas(7,11)}
 ];
 
-const container = document.getElementById("container");
-const filtro = document.getElementById("filtro");
+// ================= FUNÇÃO GENÉRICA =================
+function montarAgenda(containerId, path, nomeInstrutor){
+  const container=document.getElementById(containerId);
 
-// ================= COMPONENTES =================
-function criarAluno(nome){
-  const div=document.createElement("div");
-  div.className="aluno";
-  div.innerHTML=`
-    <input value="${nome||""}" placeholder="Nome do aluno">
-    <button class="rem">X</button>
-  `;
-  div.querySelector("input").oninput=salvar;
-  div.querySelector("button").onclick=()=>{div.remove();salvar();};
-  return div;
-}
-
-function criarLinha(hora,salvo){
-  const tr=document.createElement("tr");
-  tr.innerHTML=`
-    <td class="hora">${hora}</td>
-    <td>
-      <strong>Ale</strong>
-      <div class="alunos"></div>
-      <button class="add">+ Aluno</button>
-    </td>
-  `;
-  const box=tr.querySelector(".alunos");
-  (salvo?.alunos||[]).forEach(a=>box.appendChild(criarAluno(a)));
-  tr.querySelector(".add").onclick=()=>{
-    box.appendChild(criarAluno(""));
-    salvar();
-  };
-  return tr;
-}
-
-// ================= SALVAR =================
-function salvar(){
-  const dados=[];
-  document.querySelectorAll("table").forEach(t=>{
-    const dia=t.dataset.dia;
-    const linhas=[];
-    t.querySelectorAll("tbody tr").forEach(tr=>{
-      linhas.push({
-        hora: tr.querySelector(".hora").innerText,
-        alunos: [...tr.querySelectorAll("input")].map(i=>i.value)
+  function salvar(){
+    const dados=[];
+    container.querySelectorAll("table").forEach(t=>{
+      const dia=t.dataset.dia;
+      const linhas=[];
+      t.querySelectorAll("tbody tr").forEach(tr=>{
+        linhas.push({
+          hora: tr.querySelector(".hora").innerText,
+          alunos:[...tr.querySelectorAll("input")].map(i=>i.value)
+        });
       });
+      dados.push({dia,linhas});
     });
-    dados.push({dia,linhas});
-  });
-  db.ref("agendaAle").set(dados);
-}
+    db.ref(path).set(dados);
+  }
 
-// ================= TEMPO REAL =================
-db.ref("agendaAle").on("value",snap=>{
-  const dados=snap.val();
-  container.innerHTML="";
-  semana.forEach(d=>{
-    const h3=document.createElement("h3");
-    h3.innerText=d.dia;
+  function aluno(nome){
+    const d=document.createElement("div");
+    d.innerHTML=`<input value="${nome||""}"> <button>X</button>`;
+    d.querySelector("input").oninput=salvar;
+    d.querySelector("button").onclick=()=>{d.remove();salvar();};
+    return d;
+  }
 
-    const table=document.createElement("table");
-    table.dataset.dia=d.dia;
-    table.innerHTML="<thead><tr><th>Hora</th><th>Instrutora</th></tr></thead>";
+  function linha(hora,s){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td class="hora">${hora}</td>
+      <td><strong>${nomeInstrutor}</strong><div></div><button>+ Aluno</button></td>
+    `;
+    const box=tr.querySelector("div");
+    (s?.alunos||[]).forEach(a=>box.appendChild(aluno(a)));
+    tr.querySelector("button").onclick=()=>{
+      box.appendChild(aluno(""));
+      salvar();
+    };
+    return tr;
+  }
 
-    const tbody=document.createElement("tbody");
-    const salvo=dados?.find(x=>x.dia===d.dia);
+  db.ref(path).on("value",snap=>{
+    const dados=snap.val();
+    container.innerHTML="";
+    semana.forEach(d=>{
+      const h3=document.createElement("h3");
+      h3.innerText=d.dia;
+      const table=document.createElement("table");
 
-    d.horas.forEach(h=>{
-      const linhaSalva=salvo?.linhas?.find(l=>l.hora===h);
-      tbody.appendChild(criarLinha(h,linhaSalva));
-    });
-
-    table.appendChild(tbody);
-    container.appendChild(h3);
-    container.appendChild(table);
-  });
-  filtrar();
-});
-
-// ================= FILTRO =================
-function filtrar(){
-  document.querySelectorAll("h3,table").forEach(el=>{
-    if(filtro.value==="todos"){
-      el.style.display="";
-    }else{
-      if(el.tagName==="H3"){
-        el.style.display=el.innerText===filtro.value?"":"none";
-      }else{
-        el.style.display=el.dataset.dia===filtro.value?"":"none";
-      }
-    }
-  });
-}
-filtro.onchange=filtrar;
-</script>
-
-</body>
-</html>
