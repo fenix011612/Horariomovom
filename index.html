@@ -14,6 +14,7 @@
   --lilas:#6a5acd;
   --ciano:#4fc3f7;
   --bg:#f7f5ff;
+  --card:#ffffff;
 }
 body{
   font-family:Poppins,Arial;
@@ -33,12 +34,54 @@ h2,h3{text-align:center;color:var(--lilas);}
   cursor:pointer;
   background:#ddd;
 }
-.tab.active{
-  background:var(--lilas);
-  color:#fff;
-}
+.tab.active{background:var(--lilas);color:#fff;}
 .aba{display:none;}
 .aba.active{display:block;}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+  margin-bottom:25px;
+  border-radius:10px;
+  overflow:hidden;
+}
+th{
+  background:linear-gradient(90deg,var(--lilas),var(--ciano));
+  color:#fff;
+  padding:10px;
+}
+td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  vertical-align:top;
+}
+.hora{
+  width:80px;
+  text-align:center;
+  font-weight:600;
+}
+.instrutor-box{
+  border-left:4px solid var(--lilas);
+  padding:8px;
+  border-radius:6px;
+}
+.aluno{
+  display:flex;
+  gap:6px;
+  margin-bottom:6px;
+}
+.aluno input{
+  flex:1;
+  padding:5px;
+}
+button{
+  padding:5px 8px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+.add{background:var(--ciano);color:#fff;}
+.rem{background:#ff6b8a;color:#fff;}
 </style>
 </head>
 
@@ -46,18 +89,15 @@ h2,h3{text-align:center;color:var(--lilas);}
 
 <h2>Grade de Horários Movom</h2>
 
-<!-- ABAS -->
 <div class="tabs">
   <div class="tab active" data-aba="geral">Agenda Geral</div>
   <div class="tab" data-aba="ale">Agenda Ale</div>
 </div>
 
-<!-- ABA GERAL -->
 <div id="aba-geral" class="aba active">
   <div id="container-geral"></div>
 </div>
 
-<!-- ABA ALE -->
 <div id="aba-ale" class="aba">
   <div id="container-ale"></div>
 </div>
@@ -83,10 +123,10 @@ document.querySelectorAll(".tab").forEach(tab=>{
     document.querySelectorAll(".aba").forEach(a=>a.classList.remove("active"));
     tab.classList.add("active");
     document.getElementById("aba-"+tab.dataset.aba).classList.add("active");
-  }
+  };
 });
 
-// ================= ESTRUTURA BASE =================
+// ================= HORÁRIOS =================
 function horas(i,f){
   const h=[];
   for(let x=i;x<f;x++) h.push(`${String(x).padStart(2,"0")}:00`);
@@ -102,9 +142,47 @@ const semana = [
   {dia:"Sábado",horas:horas(7,11)}
 ];
 
-// ================= FUNÇÃO GENÉRICA =================
-function montarAgenda(containerId, path, nomeInstrutor){
-  const container=document.getElementById(containerId);
+// ================= AGENDA GERAL =================
+function iniciarAgendaGeral(){
+  const container=document.getElementById("container-geral");
+
+  function aluno(nome){
+    const d=document.createElement("div");
+    d.className="aluno";
+    d.innerHTML=`<input value="${nome||""}"><button class="rem">X</button>`;
+    d.querySelector("input").oninput=salvar;
+    d.querySelector("button").onclick=()=>{d.remove();salvar();};
+    return d;
+  }
+
+  function instrutor(nome){
+    const box=document.createElement("div");
+    box.className="instrutor-box";
+    box.innerHTML=`<input value="${nome||""}" placeholder="Instrutor"><div></div><button class="add">+ Aluno</button>`;
+    const alunosBox=box.querySelector("div");
+    box.querySelector("input").oninput=salvar;
+    box.querySelector(".add").onclick=()=>{
+      if(alunosBox.children.length>=5){
+        alert("Limite de 5 alunos");
+        return;
+      }
+      alunosBox.appendChild(aluno(""));
+      salvar();
+    };
+    return {box,alunosBox};
+  }
+
+  function linha(hora,s){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td class="hora">${hora}</td><td></td><td></td>`;
+    const i1=instrutor(s?.instr1);
+    const i2=instrutor(s?.instr2);
+    (s?.alunos1||[]).forEach(a=>i1.alunosBox.appendChild(aluno(a)));
+    (s?.alunos2||[]).forEach(a=>i2.alunosBox.appendChild(aluno(a)));
+    tr.children[1].appendChild(i1.box);
+    tr.children[2].appendChild(i2.box);
+    return tr;
+  }
 
   function salvar(){
     const dados=[];
@@ -113,18 +191,47 @@ function montarAgenda(containerId, path, nomeInstrutor){
       const linhas=[];
       t.querySelectorAll("tbody tr").forEach(tr=>{
         linhas.push({
-          hora: tr.querySelector(".hora").innerText,
-          alunos:[...tr.querySelectorAll("input")].map(i=>i.value)
+          hora:tr.querySelector(".hora").innerText,
+          instr1:tr.children[1].querySelector("input").value,
+          instr2:tr.children[2].querySelector("input").value,
+          alunos1:[...tr.children[1].querySelectorAll(".aluno input")].map(i=>i.value),
+          alunos2:[...tr.children[2].querySelectorAll(".aluno input")].map(i=>i.value)
         });
       });
       dados.push({dia,linhas});
     });
-    db.ref(path).set(dados);
+    db.ref("agenda/geral").set(dados);
   }
+
+  db.ref("agenda/geral").on("value",snap=>{
+    const dados=snap.val();
+    container.innerHTML="";
+    semana.forEach(d=>{
+      const h3=document.createElement("h3");
+      h3.innerText=d.dia;
+      const table=document.createElement("table");
+      table.dataset.dia=d.dia;
+      table.innerHTML="<thead><tr><th>Hora</th><th>Instrutor 1</th><th>Instrutor 2</th></tr></thead>";
+      const tb=document.createElement("tbody");
+      const salvo=dados?.find(x=>x.dia===d.dia);
+      d.horas.forEach(h=>{
+        tb.appendChild(linha(h,salvo?.linhas?.find(l=>l.hora===h)));
+      });
+      table.appendChild(tb);
+      container.appendChild(h3);
+      container.appendChild(table);
+    });
+  });
+}
+
+// ================= AGENDA ALE =================
+function iniciarAgendaAle(){
+  const container=document.getElementById("container-ale");
 
   function aluno(nome){
     const d=document.createElement("div");
-    d.innerHTML=`<input value="${nome||""}"> <button>X</button>`;
+    d.className="aluno";
+    d.innerHTML=`<input value="${nome||""}"><button class="rem">X</button>`;
     d.querySelector("input").oninput=salvar;
     d.querySelector("button").onclick=()=>{d.remove();salvar();};
     return d;
@@ -132,20 +239,33 @@ function montarAgenda(containerId, path, nomeInstrutor){
 
   function linha(hora,s){
     const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td class="hora">${hora}</td>
-      <td><strong>${nomeInstrutor}</strong><div></div><button>+ Aluno</button></td>
-    `;
+    tr.innerHTML=`<td class="hora">${hora}</td><td><strong>Ale</strong><div></div><button class="add">+ Aluno</button></td>`;
     const box=tr.querySelector("div");
     (s?.alunos||[]).forEach(a=>box.appendChild(aluno(a)));
-    tr.querySelector("button").onclick=()=>{
+    tr.querySelector(".add").onclick=()=>{
       box.appendChild(aluno(""));
       salvar();
     };
     return tr;
   }
 
-  db.ref(path).on("value",snap=>{
+  function salvar(){
+    const dados=[];
+    container.querySelectorAll("table").forEach(t=>{
+      const dia=t.dataset.dia;
+      const linhas=[];
+      t.querySelectorAll("tbody tr").forEach(tr=>{
+        linhas.push({
+          hora:tr.querySelector(".hora").innerText,
+          alunos:[...tr.querySelectorAll(".aluno input")].map(i=>i.value)
+        });
+      });
+      dados.push({dia,linhas});
+    });
+    db.ref("agenda/ale").set(dados);
+  }
+
+  db.ref("agenda/ale").on("value",snap=>{
     const dados=snap.val();
     container.innerHTML="";
     semana.forEach(d=>{
@@ -166,9 +286,9 @@ function montarAgenda(containerId, path, nomeInstrutor){
   });
 }
 
-// ================= INICIAR AGENDAS =================
-montarAgenda("container-geral","agenda/geral","Instrutora");
-montarAgenda("container-ale","agenda/ale","Ale");
+// ================= INICIAR =================
+iniciarAgendaGeral();
+iniciarAgendaAle();
 </script>
 
 </body>
