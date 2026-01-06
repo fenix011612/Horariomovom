@@ -25,6 +25,17 @@ h2,h3{
     border-radius:12px;
     padding:14px;
 }
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:15px;
+}
+select{
+    padding:8px;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
 table{
     width:100%;
     border-collapse:collapse;
@@ -75,6 +86,20 @@ td{
 
 <div class="container-card">
     <h2>Grade de Horários Movom</h2>
+
+    <!-- 🔽 FILTRO POR DIA -->
+    <div class="controls">
+        <select id="filtroDia">
+            <option value="Todos">Todos os dias</option>
+            <option>Segunda-feira</option>
+            <option>Terça-feira</option>
+            <option>Quarta-feira</option>
+            <option>Quinta-feira</option>
+            <option>Sexta-feira</option>
+            <option>Sábado</option>
+        </select>
+    </div>
+
     <div id="container"></div>
 </div>
 
@@ -98,6 +123,7 @@ const gradeRef = ref(db,"gradeHorarios");
 
 const MAX_ALUNOS = 5;
 const container = document.getElementById("container");
+const filtroDia = document.getElementById("filtroDia");
 
 let saveTimer=null;
 let lastFocused=null;
@@ -110,7 +136,6 @@ function gerarHorarios(inicio,fim){
     return arr;
 }
 
-/* ✅ HORÁRIOS DEFINITIVOS */
 const semana = [
  {dia:"Segunda-feira", horarios: gerarHorarios(7,19)},
  {dia:"Terça-feira",  horarios: gerarHorarios(7,19)},
@@ -197,7 +222,6 @@ function criarLinha(l){
     return tr;
 }
 
-/* 🔥 AQUI ESTÁ A CORREÇÃO PRINCIPAL */
 function render(data){
     container.innerHTML="";
     semana.forEach(d=>{
@@ -220,9 +244,24 @@ function render(data){
         container.append(h3,table);
     });
 
+    filtrarDia();
     if(lastFocused) lastFocused.focus();
 }
 
+function filtrarDia(){
+    const v=filtroDia.value;
+    document.querySelectorAll("h3, table").forEach(el=>{
+        if(v==="Todos"){
+            el.style.display="";
+        }else if(el.tagName==="H3"){
+            el.style.display=el.textContent===v?"":"none";
+        }else{
+            el.style.display=el.dataset.dia===v?"":"none";
+        }
+    });
+}
+
+filtroDia.onchange=filtrarDia;
 onValue(gradeRef,s=>render(s.val()));
 </script>
 
