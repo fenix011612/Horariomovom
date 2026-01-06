@@ -38,6 +38,7 @@ thead th{
 td{
     border-bottom:1px solid #eee;
     padding:10px;
+    vertical-align:top;
 }
 .horario-cell{
     width:90px;
@@ -101,22 +102,22 @@ const container = document.getElementById("container");
 let saveTimer = null;
 let lastFocused = null;
 
-function gerarHorarios(inicio, ultimaAula){
+function gerarHorarios(inicio, fim){
     const arr=[];
-    for(let h=inicio;h<=ultimaAula;h++){
+    for(let h=inicio;h<=fim;h++){
         arr.push(String(h).padStart(2,"0")+":00");
     }
     return arr;
 }
 
-/* 🔥 HORÁRIOS CORRETOS */
+/* ✅ HORÁRIOS CORRETOS */
 const semana = [
  {dia:"Segunda-feira", horarios: gerarHorarios(7,20)},
  {dia:"Terça-feira",  horarios: gerarHorarios(7,20)},
- {dia:"Quarta-feira",horarios: gerarHorarios(7,20)},
- {dia:"Quinta-feira",horarios: gerarHorarios(7,20)},
- {dia:"Sexta-feira", horarios: gerarHorarios(7,19)},
- {dia:"Sábado",      horarios: gerarHorarios(7,11)}
+ {dia:"Quarta-feira", horarios: gerarHorarios(7,20)},
+ {dia:"Quinta-feira", horarios: gerarHorarios(7,20)},
+ {dia:"Sexta-feira",  horarios: gerarHorarios(7,18)},
+ {dia:"Sábado",       horarios: gerarHorarios(7,10)}
 ];
 
 function salvarFirebase(){
@@ -137,7 +138,7 @@ function salvarFirebase(){
             });
         });
         set(gradeRef, data);
-    }, 300);
+    }, 400);
 }
 
 function criarAluno(nome){
@@ -160,23 +161,27 @@ function criarLinha(l){
     tr.innerHTML=`
       <td class="horario-cell">${l.horario}</td>
       <td>
-        <input class="i1">
+        <input class="i1" placeholder="Instrutor">
         <div class="alunos-box a1"></div>
         <button class="btn btn-add small">+ Aluno</button>
       </td>
       <td>
-        <input class="i2">
+        <input class="i2" placeholder="Instrutor">
         <div class="alunos-box a2"></div>
         <button class="btn btn-add small">+ Aluno</button>
       </td>`;
+
     tr.querySelector(".i1").value=l.instr1||"";
     tr.querySelector(".i2").value=l.instr2||"";
+
     tr.querySelectorAll("input").forEach(i=>{
         i.onfocus=()=>lastFocused=i;
         i.oninput=salvarFirebase;
     });
+
     l.alunos1?.forEach(a=>tr.querySelector(".a1").appendChild(criarAluno(a)));
     l.alunos2?.forEach(a=>tr.querySelector(".a2").appendChild(criarAluno(a)));
+
     tr.querySelectorAll(".btn-add")[0].onclick=()=>{
         if(tr.querySelector(".a1").children.length<MAX_ALUNOS){
             tr.querySelector(".a1").appendChild(criarAluno(""));
@@ -201,8 +206,11 @@ function render(data){
         table.dataset.dia=d.dia;
         table.innerHTML="<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th></tr></thead>";
         const tb=document.createElement("tbody");
-        (data?.[d.dia] || d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]})))
-            .forEach(l=>tb.appendChild(criarLinha(l)));
+
+        const linhas = data?.[d.dia] 
+            || d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]}));
+
+        linhas.forEach(l=>tb.appendChild(criarLinha(l)));
         table.appendChild(tb);
         container.append(h3,table);
     });
