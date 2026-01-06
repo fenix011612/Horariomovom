@@ -5,10 +5,6 @@
 <title>Grade de Horários Movom</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<!-- FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <style>
 :root{
     --lilas:#6a5acd;
@@ -21,34 +17,72 @@ body{
     background:var(--bg);
     padding:20px;
 }
-h2,h3{ text-align:center; color:var(--lilas); }
+h2,h3{
+    text-align:center;
+    color:var(--lilas);
+}
 .controls{
-    display:flex; justify-content:center; gap:12px; margin-bottom:16px;
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    margin-bottom:16px;
 }
-select{ padding:8px; border-radius:8px; }
+select{
+    padding:8px;
+    border-radius:8px;
+}
 .container-card{
-    background:#fff; border-radius:12px; padding:14px;
-    box-shadow:0 6px 20px rgba(0,0,0,.06);
+    background:#fff;
+    border-radius:12px;
+    padding:14px;
 }
-table{ width:100%; border-collapse:collapse; margin-bottom:24px; }
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-bottom:24px;
+}
 thead th{
     background:linear-gradient(90deg,var(--lilas),var(--ciano));
-    color:#fff; padding:10px;
+    color:#fff;
+    padding:10px;
 }
-td{ padding:10px; border-bottom:1px solid #eee; }
-.horario-cell{ width:90px; text-align:center; font-weight:600; }
+td{
+    border-bottom:1px solid #eee;
+    padding:10px;
+}
+.horario-cell{
+    width:90px;
+    text-align:center;
+    font-weight:600;
+}
 .instrutor-box{
     border-left:4px solid var(--lilas);
-    padding:8px; border-radius:6px; background:#fff;
+    padding:8px;
+    border-radius:6px;
 }
-.instrutor-box + .instrutor-box{ border-left-color:var(--ciano); }
-.alunos-box{ display:flex; flex-direction:column; gap:6px; }
-.aluno-row{ display:flex; gap:6px; }
-.aluno-row input{ flex:1; padding:6px; }
-.btn{ padding:6px 10px; border-radius:8px; border:none; cursor:pointer; }
-.btn-add{ background:var(--ciano); color:#fff; }
-.btn-remove,.btn-apagar{ background:#ff6b8a; color:#fff; }
-.small{ font-size:12px; }
+.alunos-box{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-top:6px;
+}
+.aluno-row{
+    display:flex;
+    gap:6px;
+}
+.aluno-row input{
+    flex:1;
+    padding:6px;
+}
+.btn{
+    border:none;
+    border-radius:6px;
+    padding:6px 10px;
+    cursor:pointer;
+}
+.btn-add{background:var(--ciano);color:#fff;}
+.btn-remove,.btn-apagar{background:#ff6b8a;color:#fff;}
+.small{font-size:12px;}
 </style>
 </head>
 
@@ -71,122 +105,132 @@ td{ padding:10px; border-bottom:1px solid #eee; }
     <div id="container"></div>
 </div>
 
-<script>
-// ================= FIREBASE =================
-firebase.initializeApp({
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
   apiKey: "AIzaSyASKbZ204Yls9IU3HenHTsHwqgbpotUga0",
   authDomain: "horariomovom.firebaseapp.com",
   databaseURL: "https://horariomovom-default-rtdb.firebaseio.com",
-  projectId: "horariomovom"
-});
-const db = firebase.database().ref("gradeHorarios");
+  projectId: "horariomovom",
+  storageBucket: "horariomovom.firebasestorage.app",
+  messagingSenderId: "827903999846",
+  appId: "1:827903999846:web:e2495e75cc0f8b4ad852a7"
+};
 
-// ================= CONFIG =================
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const gradeRef = ref(db, "gradeHorarios");
+
 const MAX_ALUNOS = 5;
 const container = document.getElementById("container");
 const selectDia = document.getElementById("diaSemana");
 
-function gerarHorarios(i,f){
-    return Array.from({length:f-i},(_,k)=>`${String(k+i).padStart(2,'0')}:00`);
+function gerarHorarios(inicio,fim){
+    const arr=[];
+    for(let h=inicio;h<fim;h++){
+        arr.push(String(h).padStart(2,"0")+":00");
+    }
+    return arr;
 }
 
 const semana = [
- {dia:"Segunda-feira",horarios:gerarHorarios(7,20)},
- {dia:"Terça-feira",horarios:gerarHorarios(7,20)},
- {dia:"Quarta-feira",horarios:gerarHorarios(7,20)},
- {dia:"Quinta-feira",horarios:gerarHorarios(7,20)},
- {dia:"Sexta-feira",horarios:gerarHorarios(7,19)},
- {dia:"Sábado",horarios:gerarHorarios(7,12)}
+ {dia:"Segunda-feira",horarios:gerarHorarios(7,19)},
+ {dia:"Terça-feira",horarios:gerarHorarios(7,19)},
+ {dia:"Quarta-feira",horarios:gerarHorarios(7,19)},
+ {dia:"Quinta-feira",horarios:gerarHorarios(7,19)},
+ {dia:"Sexta-feira",horarios:gerarHorarios(7,18)},
+ {dia:"Sábado",horarios:gerarHorarios(7,11)}
 ];
 
-// ================= SALVAR =================
-function salvar(){
-    const data = {};
-    document.querySelectorAll("table").forEach(t=>{
-        const dia=t.dataset.dia;
+function salvarFirebase(){
+    const data={};
+    document.querySelectorAll("table[data-dia]").forEach(table=>{
+        const dia=table.dataset.dia;
         data[dia]=[];
-        t.querySelectorAll("tbody tr").forEach(tr=>{
+        table.querySelectorAll("tbody tr").forEach(tr=>{
             const horario=tr.querySelector(".horario-cell").textContent;
-            const instr1=tr.querySelector(".instrutor1 input").value;
-            const instr2=tr.querySelector(".instrutor2 input").value;
-            const alunos1=[...tr.querySelectorAll(".instrutor1 .aluno-row input")].map(i=>i.value);
-            const alunos2=[...tr.querySelectorAll(".instrutor2 .aluno-row input")].map(i=>i.value);
+            const instr1=tr.querySelector(".i1")?.value||"";
+            const instr2=tr.querySelector(".i2")?.value||"";
+            const alunos1=[...tr.querySelectorAll(".a1 input")].map(i=>i.value);
+            const alunos2=[...tr.querySelectorAll(".a2 input")].map(i=>i.value);
             data[dia].push({horario,instr1,instr2,alunos1,alunos2});
         });
     });
-    db.set(data);
+    set(gradeRef,data);
 }
 
-// ================= UI =================
-function alunoRow(v){
+function criarAluno(nome,classe){
     const d=document.createElement("div");
-    d.className="aluno-row";
-    d.innerHTML=`<input value="${v||""}"><button class="btn btn-remove small">X</button>`;
-    d.querySelector("input").oninput=salvar;
-    d.querySelector("button").onclick=()=>{d.remove();salvar();}
+    d.className="aluno-row "+classe;
+    const i=document.createElement("input");
+    i.value=nome||"";
+    i.oninput=salvarFirebase;
+    const b=document.createElement("button");
+    b.textContent="X";
+    b.className="btn btn-remove small";
+    b.onclick=()=>{d.remove();salvarFirebase();};
+    d.append(i,b);
     return d;
 }
 
-function coluna(instr,alunos){
-    const b=document.createElement("div");
-    b.className="instrutor-box";
-    b.innerHTML=`<input value="${instr||""}">`;
-    const a=document.createElement("div"); a.className="alunos-box";
-    (alunos||[]).forEach(x=>a.appendChild(alunoRow(x)));
-    b.appendChild(a);
-    b.querySelector("input").oninput=salvar;
-    return {b,a};
-}
-
-function linha(h,d){
+function criarLinha(linha){
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td class="horario-cell">${h}</td>
-    <td class="instrutor1"></td><td class="instrutor2"></td>
-    <td><button class="btn btn-apagar small">Apagar</button></td>`;
-    const i1=coluna(d?.instr1,d?.alunos1);
-    const i2=coluna(d?.instr2,d?.alunos2);
-    tr.children[1].append(i1.b,addBtn(i1.a));
-    tr.children[2].append(i2.b,addBtn(i2.a));
-    tr.querySelector(".btn-apagar").onclick=()=>{tr.remove();salvar();}
+    tr.innerHTML=`
+      <td class="horario-cell">${linha.horario}</td>
+      <td>
+        <input class="i1" value="${linha.instr1||""}">
+        <div class="alunos-box a1"></div>
+        <button class="btn btn-add small">+ Aluno</button>
+      </td>
+      <td>
+        <input class="i2" value="${linha.instr2||""}">
+        <div class="alunos-box a2"></div>
+        <button class="btn btn-add small">+ Aluno</button>
+      </td>
+      <td></td>`;
+    tr.querySelectorAll("input").forEach(i=>i.oninput=salvarFirebase);
+
+    linha.alunos1?.forEach(a=>tr.querySelector(".a1").appendChild(criarAluno(a,"")));
+    linha.alunos2?.forEach(a=>tr.querySelector(".a2").appendChild(criarAluno(a,"")));
+
+    tr.querySelectorAll(".btn-add")[0].onclick=()=>{
+        if(tr.querySelector(".a1").children.length<MAX_ALUNOS){
+            tr.querySelector(".a1").appendChild(criarAluno("",""));
+            salvarFirebase();
+        }
+    };
+    tr.querySelectorAll(".btn-add")[1].onclick=()=>{
+        if(tr.querySelector(".a2").children.length<MAX_ALUNOS){
+            tr.querySelector(".a2").appendChild(criarAluno("",""));
+            salvarFirebase();
+        }
+    };
     return tr;
 }
 
-function addBtn(box){
-    const b=document.createElement("button");
-    b.className="btn btn-add small"; b.textContent="+ Aluno";
-    b.onclick=()=>{
-        if(box.children.length>=MAX_ALUNOS) return alert("Limite 5 alunos");
-        box.appendChild(alunoRow(""));
-        salvar();
-    };
-    return b;
-}
-
-function montar(data={}){
+function render(data){
     container.innerHTML="";
-    semana.forEach(s=>{
-        container.innerHTML+=`<h3>${s.dia}</h3>`;
-        const t=document.createElement("table");
-        t.dataset.dia=s.dia;
-        t.innerHTML=`<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th><th>Ações</th></tr></thead>`;
+    semana.forEach(d=>{
+        const h3=document.createElement("h3");
+        h3.textContent=d.dia;
+        const table=document.createElement("table");
+        table.dataset.dia=d.dia;
+        table.innerHTML="<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th><th></th></tr></thead>";
         const tb=document.createElement("tbody");
-        s.horarios.forEach(h=>{
-            tb.appendChild(linha(h,data[s.dia]?.find(x=>x.horario===h)));
-        });
-        t.appendChild(tb);
-        container.appendChild(t);
+        (data?.[d.dia]||d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]})))
+            .forEach(l=>tb.appendChild(criarLinha(l)));
+        table.appendChild(tb);
+        container.append(h3,table);
     });
 }
 
-// ================= TEMPO REAL =================
-db.on("value",snap=>montar(snap.val()||{}));
-
-selectDia.onchange=()=>{
- document.querySelectorAll("h3,table").forEach(e=>{
-   if(selectDia.value==="todos") e.style.display="";
-   else e.style.display=(e.tagName==="H3"?e.textContent:e.previousElementSibling.textContent)===selectDia.value?"":"none";
- });
-};
+onValue(gradeRef,snap=>{
+    render(snap.val());
+});
 </script>
+
 </body>
 </html>
+
