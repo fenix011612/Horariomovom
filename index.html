@@ -94,7 +94,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const gradeRef = ref(db, "gradeHorarios");
+const gradeRef = ref(db,"gradeHorarios");
 
 const MAX_ALUNOS = 5;
 const container = document.getElementById("container");
@@ -110,14 +110,14 @@ function gerarHorarios(inicio,fim){
     return arr;
 }
 
-/* 🔥 HORÁRIOS DEFINITIVOS */
+/* ✅ HORÁRIOS DEFINITIVOS */
 const semana = [
- {dia:"Segunda-feira", horarios: gerarHorarios(7,19)},
- {dia:"Terça-feira",  horarios: gerarHorarios(7,19)},
- {dia:"Quarta-feira", horarios: gerarHorarios(7,19)},
- {dia:"Quinta-feira", horarios: gerarHorarios(7,19)},
- {dia:"Sexta-feira",  horarios: gerarHorarios(7,18)},
- {dia:"Sábado",       horarios: gerarHorarios(7,10)}
+ {dia:"Segunda-feira", horarios: gerarHorarios(7,20)},
+ {dia:"Terça-feira",  horarios: gerarHorarios(7,20)},
+ {dia:"Quarta-feira", horarios: gerarHorarios(7,20)},
+ {dia:"Quinta-feira", horarios: gerarHorarios(7,20)},
+ {dia:"Sexta-feira",  horarios: gerarHorarios(7,19)},
+ {dia:"Sábado",       horarios: gerarHorarios(7,11)}
 ];
 
 function salvarFirebase(){
@@ -170,7 +170,7 @@ function criarLinha(l){
         <div class="alunos-box a2"></div>
         <button class="btn btn-add small">+ Aluno</button>
       </td>`;
-
+    
     tr.querySelector(".i1").value=l.instr1||"";
     tr.querySelector(".i2").value=l.instr2||"";
 
@@ -197,22 +197,29 @@ function criarLinha(l){
     return tr;
 }
 
+/* 🔥 AQUI ESTÁ A CORREÇÃO PRINCIPAL */
 function render(data){
     container.innerHTML="";
     semana.forEach(d=>{
         const h3=document.createElement("h3");
         h3.textContent=d.dia;
+
         const table=document.createElement("table");
         table.dataset.dia=d.dia;
         table.innerHTML="<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th></tr></thead>";
         const tb=document.createElement("tbody");
 
-        const linhas=data?.[d.dia] || d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]}));
-        linhas.forEach(l=>tb.appendChild(criarLinha(l)));
+        const salvos = data?.[d.dia] || [];
+
+        d.horarios.forEach(h=>{
+            const encontrado = salvos.find(l=>l.horario===h);
+            tb.appendChild(criarLinha(encontrado || {horario:h,alunos1:[],alunos2:[]}));
+        });
 
         table.appendChild(tb);
         container.append(h3,table);
     });
+
     if(lastFocused) lastFocused.focus();
 }
 
@@ -221,6 +228,3 @@ onValue(gradeRef,s=>render(s.val()));
 
 </body>
 </html>
-
-
-
