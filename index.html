@@ -112,12 +112,12 @@ function gerarHorarios(inicio, fim){
 
 /* ✅ HORÁRIOS CORRETOS */
 const semana = [
- {dia:"Segunda-feira", horarios: gerarHorarios(7,20)},
- {dia:"Terça-feira",  horarios: gerarHorarios(7,20)},
- {dia:"Quarta-feira", horarios: gerarHorarios(7,20)},
- {dia:"Quinta-feira", horarios: gerarHorarios(7,20)},
- {dia:"Sexta-feira",  horarios: gerarHorarios(7,18)},
- {dia:"Sábado",       horarios: gerarHorarios(7,10)}
+    { dia: "Segunda-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Terça-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Quarta-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Quinta-feira", horarios: gerarHorarios(7,20) },
+    { dia: "Sexta-feira", horarios: gerarHorarios(7,19) },
+    { dia: "Sábado", horarios: gerarHorarios(7,12) }
 ];
 
 function salvarFirebase(){
@@ -224,3 +224,4 @@ onValue(gradeRef,snap=>{
 
 </body>
 </html>
+
