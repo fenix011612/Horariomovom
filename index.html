@@ -99,10 +99,10 @@ const gradeRef = ref(db, "gradeHorarios");
 const MAX_ALUNOS = 5;
 const container = document.getElementById("container");
 
-let saveTimer = null;
-let lastFocused = null;
+let saveTimer=null;
+let lastFocused=null;
 
-function gerarHorarios(inicio, fim){
+function gerarHorarios(inicio,fim){
     const arr=[];
     for(let h=inicio;h<=fim;h++){
         arr.push(String(h).padStart(2,"0")+":00");
@@ -110,35 +110,35 @@ function gerarHorarios(inicio, fim){
     return arr;
 }
 
-/* ✅ HORÁRIOS CORRETOS */
+/* 🔥 HORÁRIOS DEFINITIVOS */
 const semana = [
-    { dia: "Segunda-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Terça-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Quarta-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Quinta-feira", horarios: gerarHorarios(7,20) },
-    { dia: "Sexta-feira", horarios: gerarHorarios(7,19) },
-    { dia: "Sábado", horarios: gerarHorarios(7,12) }
+ {dia:"Segunda-feira", horarios: gerarHorarios(7,19)},
+ {dia:"Terça-feira",  horarios: gerarHorarios(7,19)},
+ {dia:"Quarta-feira", horarios: gerarHorarios(7,19)},
+ {dia:"Quinta-feira", horarios: gerarHorarios(7,19)},
+ {dia:"Sexta-feira",  horarios: gerarHorarios(7,18)},
+ {dia:"Sábado",       horarios: gerarHorarios(7,10)}
 ];
 
 function salvarFirebase(){
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-        const data = {};
-        document.querySelectorAll("table[data-dia]").forEach(table=>{
-            const dia = table.dataset.dia;
-            data[dia] = [];
-            table.querySelectorAll("tbody tr").forEach(tr=>{
+    saveTimer=setTimeout(()=>{
+        const data={};
+        document.querySelectorAll("table[data-dia]").forEach(t=>{
+            const dia=t.dataset.dia;
+            data[dia]=[];
+            t.querySelectorAll("tbody tr").forEach(tr=>{
                 data[dia].push({
-                    horario: tr.querySelector(".horario-cell").textContent,
-                    instr1: tr.querySelector(".i1").value,
-                    instr2: tr.querySelector(".i2").value,
+                    horario:tr.querySelector(".horario-cell").textContent,
+                    instr1:tr.querySelector(".i1").value,
+                    instr2:tr.querySelector(".i2").value,
                     alunos1:[...tr.querySelectorAll(".a1 input")].map(i=>i.value),
                     alunos2:[...tr.querySelectorAll(".a2 input")].map(i=>i.value)
                 });
             });
         });
-        set(gradeRef, data);
-    }, 400);
+        set(gradeRef,data);
+    },400);
 }
 
 function criarAluno(nome){
@@ -161,12 +161,12 @@ function criarLinha(l){
     tr.innerHTML=`
       <td class="horario-cell">${l.horario}</td>
       <td>
-        <input class="i1" placeholder="Instrutor">
+        <input class="i1">
         <div class="alunos-box a1"></div>
         <button class="btn btn-add small">+ Aluno</button>
       </td>
       <td>
-        <input class="i2" placeholder="Instrutor">
+        <input class="i2">
         <div class="alunos-box a2"></div>
         <button class="btn btn-add small">+ Aluno</button>
       </td>`;
@@ -207,21 +207,20 @@ function render(data){
         table.innerHTML="<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th></tr></thead>";
         const tb=document.createElement("tbody");
 
-        const linhas = data?.[d.dia] 
-            || d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]}));
-
+        const linhas=data?.[d.dia] || d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]}));
         linhas.forEach(l=>tb.appendChild(criarLinha(l)));
+
         table.appendChild(tb);
         container.append(h3,table);
     });
     if(lastFocused) lastFocused.focus();
 }
 
-onValue(gradeRef,snap=>{
-    render(snap.val());
-});
+onValue(gradeRef,s=>render(s.val()));
 </script>
 
 </body>
 </html>
+
+
 
