@@ -101,22 +101,23 @@ const container = document.getElementById("container");
 let saveTimer = null;
 let lastFocused = null;
 
-function gerarHorarios(inicio, ultimaAula){
+/* 🔥 FUNÇÃO CORRETA */
+function gerarHorarios(inicio, fimInclusivo){
     const arr=[];
-    for(let h=inicio;h<=ultimaAula;h++){
+    for(let h=inicio; h<=fimInclusivo; h++){
         arr.push(String(h).padStart(2,"0")+":00");
     }
     return arr;
 }
 
-/* 🔥 HORÁRIOS CORRETOS */
+/* ✅ HORÁRIOS DEFINITIVOS */
 const semana = [
- {dia:"Segunda-feira", horarios: gerarHorarios(7,19)},
- {dia:"Terça-feira",  horarios: gerarHorarios(7,19)},
- {dia:"Quarta-feira",horarios: gerarHorarios(7,19)},
- {dia:"Quinta-feira",horarios: gerarHorarios(7,19)},
- {dia:"Sexta-feira", horarios: gerarHorarios(7,18)},
- {dia:"Sábado",      horarios: gerarHorarios(7,10)}
+ { dia:"Segunda-feira", horarios: gerarHorarios(7,19) },
+ { dia:"Terça-feira",  horarios: gerarHorarios(7,19) },
+ { dia:"Quarta-feira", horarios: gerarHorarios(7,19) },
+ { dia:"Quinta-feira", horarios: gerarHorarios(7,19) },
+ { dia:"Sexta-feira",  horarios: gerarHorarios(7,18) },
+ { dia:"Sábado",       horarios: gerarHorarios(7,10) }
 ];
 
 function salvarFirebase(){
@@ -201,8 +202,10 @@ function render(data){
         table.dataset.dia=d.dia;
         table.innerHTML="<thead><tr><th>Horário</th><th>Instrutor 1</th><th>Instrutor 2</th></tr></thead>";
         const tb=document.createElement("tbody");
+
         (data?.[d.dia] || d.horarios.map(h=>({horario:h,alunos1:[],alunos2:[]})))
-            .forEach(l=>tb.appendChild(criarLinha(l)));
+          .forEach(l=>tb.appendChild(criarLinha(l)));
+
         table.appendChild(tb);
         container.append(h3,table);
     });
@@ -216,4 +219,3 @@ onValue(gradeRef,snap=>{
 
 </body>
 </html>
-
