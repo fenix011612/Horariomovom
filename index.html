@@ -46,17 +46,36 @@ td{
  border-bottom:1px solid #eee;
  vertical-align:top;
 }
-.horario-cell{ width:80px; font-weight:600; text-align:center; }
+.horario-cell{
+ width:80px;
+ font-weight:600;
+ text-align:center;
+}
 .instrutor-box{
  background:#fff;
  border-left:4px solid var(--lilas);
  padding:8px;
  border-radius:6px;
 }
-.instrutor-box + .instrutor-box{ border-left-color:var(--ciano); }
-.alunos-box{ margin-top:6px; display:flex; flex-direction:column; gap:6px; }
-.aluno-row{ display:flex; gap:6px; }
-input{ padding:6px; border-radius:6px; border:1px solid #ddd; width:100%; }
+.instrutor-box + .instrutor-box{
+ border-left-color:var(--ciano);
+}
+.alunos-box{
+ margin-top:6px;
+ display:flex;
+ flex-direction:column;
+ gap:6px;
+}
+.aluno-row{
+ display:flex;
+ gap:6px;
+}
+input{
+ padding:6px;
+ border-radius:6px;
+ border:1px solid #ddd;
+ width:100%;
+}
 button{
  border:none;
  border-radius:6px;
@@ -64,7 +83,7 @@ button{
  cursor:pointer;
 }
 .btn-add{ background:var(--ciano); color:#fff; }
-.btn-remove,.btn-apagar{ background:#ff6b8a; color:#fff; }
+.btn-remove{ background:#ff6b8a; color:#fff; }
 .small{ font-size:12px; }
 </style>
 </head>
@@ -110,7 +129,9 @@ const gradeRef = ref(db,"gradeHorarios");
 /* HORÁRIOS */
 function gerarHorarios(i,f){
  const arr=[];
- for(let h=i;h<=f;h++) arr.push(String(h).padStart(2,"0")+":00");
+ for(let h=i;h<=f;h++){
+  arr.push(String(h).padStart(2,"0")+":00");
+ }
  return arr;
 }
 
@@ -126,85 +147,134 @@ const semana=[
 const MAX=5;
 const container=document.getElementById("container");
 const selectDia=document.getElementById("diaSemana");
+
 let cache=null;
-let timer=null;
+let saveTimer=null;
 
 /* SAVE */
 function salvar(){
- clearTimeout(timer);
- timer=setTimeout(()=>{
+ clearTimeout(saveTimer);
+ saveTimer=setTimeout(()=>{
   set(gradeRef,cache);
  },300);
 }
 
-/* UI */
-function alunoRow(nome,cb){
- const d=document.createElement("div");
- d.className="aluno-row";
- const i=document.createElement("input");
- i.value=nome||"";
- i.oninput=e=>{cb(e.target.value); salvar();};
- const b=document.createElement("button");
- b.textContent="X";
- b.className="btn-remove small";
- b.onclick=()=>{cb(null,true); salvar();};
- d.append(i,b);
- return d;
+/* UI HELPERS */
+function criarAlunoRow(instrutor,idx){
+ const row=document.createElement("div");
+ row.className="aluno-row";
+
+ const inp=document.createElement("input");
+ inp.value=instrutor.alunos[idx] || "";
+ inp.oninput=e=>{
+  instrutor.alunos[idx]=e.target.value;
+  salvar();
+ };
+
+ const btn=document.createElement("button");
+ btn.textContent="X";
+ btn.className="btn-remove small";
+ btn.onclick=()=>{
+  instrutor.alunos.splice(idx,1);
+  salvar();
+ };
+
+ row.append(inp,btn);
+ return row;
 }
 
-function instrutorBox(data){
+function criarInstrutorBox(instrutor){
  const box=document.createElement("div");
  box.className="instrutor-box";
- const inp=document.createElement("input");
- inp.value=data.nome||"";
- inp.oninput=e=>{data.nome=e.target.value; salvar();};
+
+ const nome=document.createElement("input");
+ nome.placeholder="Nome do instrutor";
+ nome.value=instrutor.nome;
+ nome.oninput=e=>{
+  instrutor.nome=e.target.value;
+  salvar();
+ };
+
  const alunos=document.createElement("div");
  alunos.className="alunos-box";
 
- data.alunos.forEach((a,idx)=>{
-  alunos.appendChild(alunoRow(a,(v,del)=>{
-   if(del) data.alunos.splice(idx,1);
-   else data.alunos[idx]=v;
-  }));
+ instrutor.alunos.forEach((_,i)=>{
+  alunos.appendChild(criarAlunoRow(instrutor,i));
  });
 
  const add=document.createElement("button");
  add.textContent="+ Aluno";
  add.className="btn-add small";
  add.onclick=()=>{
-  if(data.alunos.length>=MAX) return alert("Máx 5 alunos");
-  data.alunos.push("");
+  if(instrutor.alunos.length>=MAX){
+   alert("Máximo de 5 alunos");
+   return;
+  }
+  instrutor.alunos.push("");
   salvar();
  };
 
- box.append(inp,alunos,add);
+ box.append(nome,alunos,add);
  return box;
 }
 
+/* RENDER */
 function render(){
  container.innerHTML="";
+
  semana.forEach(d=>{
   const h3=document.createElement("h3");
   h3.textContent=d.dia;
-  const t=document.createElement("table");
-  const tb=document.createElement("tbody");
+
+  const table=document.createElement("table");
+  table.innerHTML=`
+   <thead>
+    <tr>
+     <th>Horário</th>
+     <th>Instrutor 1</th>
+     <th>Instrutor 2</th>
+    </tr>
+   </thead>
+  `;
+
+  const tbody=document.createElement("tbody");
 
   d.horarios.forEach(h=>{
-   const l=cache[d.dia][h];
+   const linha=cache[d.dia][h];
+
    const tr=document.createElement("tr");
    tr.innerHTML=`<td class="horario-cell">${h}</td>`;
+
    const td1=document.createElement("td");
    const td2=document.createElement("td");
-   td1.appendChild(instrutorBox(l.i1));
-   td2.appendChild(instrutorBox(l.i2));
+
+   td1.appendChild(criarInstrutorBox(linha.i1));
+   td2.appendChild(criarInstrutorBox(linha.i2));
+
    tr.append(td1,td2);
-   tb.appendChild(tr);
+   tbody.appendChild(tr);
   });
 
-  t.appendChild(tb);
-  container.append(h3,t);
+  table.appendChild(tbody);
+  container.append(h3,table);
+ });
+
+ filtrar();
+}
+
+/* FILTRO */
+function filtrar(){
+ const v=selectDia.value;
+ document.querySelectorAll("h3,table").forEach(el=>{
+  if(v==="todos") el.style.display="";
+  else if(el.tagName==="H3")
+   el.style.display=el.textContent===v?"":"none";
+  else
+   el.style.display=el.previousElementSibling.textContent===v?"":"none";
  });
 }
+
+selectDia.onchange=filtrar;
 
 /* REALTIME */
 onValue(gradeRef,snap=>{
@@ -215,23 +285,18 @@ onValue(gradeRef,snap=>{
   semana.forEach(d=>{
    cache[d.dia]={};
    d.horarios.forEach(h=>{
-    cache[d.dia][h]={ i1:{nome:"",alunos:[]}, i2:{nome:"",alunos:[]} };
+    cache[d.dia][h]={
+     i1:{nome:"",alunos:[]},
+     i2:{nome:"",alunos:[]}
+    };
    });
   });
   salvar();
  }
  render();
 });
-
-/* FILTRO */
-selectDia.onchange=()=>{
- document.querySelectorAll("h3,table").forEach(e=>{
-  if(selectDia.value==="todos") e.style.display="";
-  else if(e.tagName==="H3") e.style.display=e.textContent===selectDia.value?"":"none";
-  else e.style.display=e.previousElementSibling.textContent===selectDia.value?"":"none";
- });
-};
 </script>
 
 </body>
 </html>
+
