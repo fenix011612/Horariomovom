@@ -87,7 +87,6 @@ td{
 <div class="container-card">
     <h2>Grade de Horários Movom</h2>
 
-    <!-- 🔽 FILTRO POR DIA -->
     <div class="controls">
         <select id="filtroDia">
             <option value="Todos">Todos os dias</option>
@@ -107,17 +106,13 @@ td{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const firebaseConfig = {
+const app = initializeApp({
   apiKey: "AIzaSyASKbZ204Yls9IU3HenHTsHwqgbpotUga0",
   authDomain: "horariomovom.firebaseapp.com",
   databaseURL: "https://horariomovom-default-rtdb.firebaseio.com",
-  projectId: "horariomovom",
-  storageBucket: "horariomovom.firebasestorage.app",
-  messagingSenderId: "827903999846",
-  appId: "1:827903999846:web:e2495e75cc0f8b4ad852a7"
-};
+  projectId: "horariomovom"
+});
 
-const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const gradeRef = ref(db,"gradeHorarios");
 
@@ -125,14 +120,11 @@ const MAX_ALUNOS = 5;
 const container = document.getElementById("container");
 const filtroDia = document.getElementById("filtroDia");
 
-let saveTimer=null;
-let lastFocused=null;
+let isTyping = false;
 
 function gerarHorarios(inicio,fim){
     const arr=[];
-    for(let h=inicio;h<=fim;h++){
-        arr.push(String(h).padStart(2,"0")+":00");
-    }
+    for(let h=inicio;h<=fim;h++) arr.push(String(h).padStart(2,"0")+":00");
     return arr;
 }
 
@@ -146,24 +138,21 @@ const semana = [
 ];
 
 function salvarFirebase(){
-    clearTimeout(saveTimer);
-    saveTimer=setTimeout(()=>{
-        const data={};
-        document.querySelectorAll("table[data-dia]").forEach(t=>{
-            const dia=t.dataset.dia;
-            data[dia]=[];
-            t.querySelectorAll("tbody tr").forEach(tr=>{
-                data[dia].push({
-                    horario:tr.querySelector(".horario-cell").textContent,
-                    instr1:tr.querySelector(".i1").value,
-                    instr2:tr.querySelector(".i2").value,
-                    alunos1:[...tr.querySelectorAll(".a1 input")].map(i=>i.value),
-                    alunos2:[...tr.querySelectorAll(".a2 input")].map(i=>i.value)
-                });
+    const data={};
+    document.querySelectorAll("table[data-dia]").forEach(t=>{
+        const dia=t.dataset.dia;
+        data[dia]=[];
+        t.querySelectorAll("tbody tr").forEach(tr=>{
+            data[dia].push({
+                horario:tr.querySelector(".horario-cell").textContent,
+                instr1:tr.querySelector(".i1").value,
+                instr2:tr.querySelector(".i2").value,
+                alunos1:[...tr.querySelectorAll(".a1 input")].map(i=>i.value),
+                alunos2:[...tr.querySelectorAll(".a2 input")].map(i=>i.value)
             });
         });
-        set(gradeRef,data);
-    },400);
+    });
+    set(gradeRef,data);
 }
 
 function criarAluno(nome){
@@ -171,8 +160,8 @@ function criarAluno(nome){
     d.className="aluno-row";
     const i=document.createElement("input");
     i.value=nome||"";
-    i.onfocus=()=>lastFocused=i;
-    i.oninput=salvarFirebase;
+    i.onfocus=()=>isTyping=true;
+    i.onblur=()=>{isTyping=false;salvarFirebase();};
     const b=document.createElement("button");
     b.textContent="X";
     b.className="btn btn-remove small";
@@ -195,13 +184,13 @@ function criarLinha(l){
         <div class="alunos-box a2"></div>
         <button class="btn btn-add small">+ Aluno</button>
       </td>`;
-    
+
     tr.querySelector(".i1").value=l.instr1||"";
     tr.querySelector(".i2").value=l.instr2||"";
 
     tr.querySelectorAll("input").forEach(i=>{
-        i.onfocus=()=>lastFocused=i;
-        i.oninput=salvarFirebase;
+        i.onfocus=()=>isTyping=true;
+        i.onblur=()=>{isTyping=false;salvarFirebase();};
     });
 
     l.alunos1?.forEach(a=>tr.querySelector(".a1").appendChild(criarAluno(a)));
@@ -223,6 +212,8 @@ function criarLinha(l){
 }
 
 function render(data){
+    if(isTyping) return;
+
     container.innerHTML="";
     semana.forEach(d=>{
         const h3=document.createElement("h3");
@@ -234,7 +225,6 @@ function render(data){
         const tb=document.createElement("tbody");
 
         const salvos = data?.[d.dia] || [];
-
         d.horarios.forEach(h=>{
             const encontrado = salvos.find(l=>l.horario===h);
             tb.appendChild(criarLinha(encontrado || {horario:h,alunos1:[],alunos2:[]}));
@@ -245,19 +235,14 @@ function render(data){
     });
 
     filtrarDia();
-    if(lastFocused) lastFocused.focus();
 }
 
 function filtrarDia(){
     const v=filtroDia.value;
     document.querySelectorAll("h3, table").forEach(el=>{
-        if(v==="Todos"){
-            el.style.display="";
-        }else if(el.tagName==="H3"){
-            el.style.display=el.textContent===v?"":"none";
-        }else{
-            el.style.display=el.dataset.dia===v?"":"none";
-        }
+        if(v==="Todos") el.style.display="";
+        else if(el.tagName==="H3") el.style.display=el.textContent===v?"":"none";
+        else el.style.display=el.dataset.dia===v?"":"none";
     });
 }
 
